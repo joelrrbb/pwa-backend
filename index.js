@@ -227,7 +227,7 @@ if (identity_card) {
         phone,
         identity_card: identity_card || '',
 		birth_date: birth_date || null,
-        points: parseInt(points) || 0,
+        points: parseInt(points) || 10,
         referrer_id,
         access_code,
         is_verified: is_verified ?? 1, 

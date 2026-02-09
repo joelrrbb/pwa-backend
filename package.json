@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node --watch index.js",
-    "start": "node index.js"
-  },
+  "dev": "node --watch index.js",
+  "start": "node index.js",
+  "build": "npm install" 
+   },
   "keywords": [],
   "author": "",
   "license": "ISC",

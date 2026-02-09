@@ -1,0 +1,451 @@
+﻿<%- include('partials/head', { title: 'Members Core' }) %>
+<body class="layui-padding-3">
+
+  <div class="layui-container" style="margin-top:20px;">
+<h2>Militantes / Voluntarios</h2>
+<form class="layui-form layui-row layui-col-space16"> 
+  <div class="layui-col-md3">
+  <div class="layui-form-item line-sjwxsc">
+    <div class="layui-input-group">
+      <div class="layui-input-split layui-input-prefix">
+        Nombre
+      </div>
+      <input type="text" name="name" value="" placeholder="Nombre o apellido" class="layui-input" lay-affix="clear">
+    </div>
+  </div>
+  </div>
+  <div class="layui-col-md3">
+  <div class="layui-form-item line-sjwxsc">
+    <div class="layui-input-group">
+      <div class="layui-input-split layui-input-prefix">
+        Teléfono
+      </div>
+      <input type="text" name="phone" value="" placeholder="Celular" class="layui-input" lay-affix="clear">
+    </div>
+  </div>
+  </div>
+  <div class="layui-col-md3">
+  <div class="layui-form-item line-sjwxsc">
+    <div class="layui-input-group">
+      <div class="layui-input-split layui-input-prefix">
+        Cédula de identidad
+      </div>
+      <input type="text" name="identity_card" value="" placeholder="7548965" class="layui-input" lay-affix="clear">
+    </div>
+  </div>
+  </div>
+  <div class="layui-btn-container layui-col-xs12">
+    <button class="layui-btn" lay-submit lay-filter="searchMembers">Buscar</button>
+    <button type="reset" class="layui-btn layui-btn-primary layui-bg-white">Limpiar</button>
+  </div>
+</form> 
+<table id="mainTable" lay-filter="mainFilter"></table>
+</div>
+
+ 
+
+<script type="text/html" id="tableToolbar">
+  <div class="layui-btn-container">
+    <button class="layui-btn layui-btn-sm" lay-event="add">
+      <i class="layui-icon layui-icon-add-1"></i> Agregar
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
+      <i class="layui-icon layui-icon-list"></i> Publicaciones
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-bg-green" lay-event="goEvents">
+      <i class="layui-icon layui-icon-date"></i> Eventos
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
+      <i class="layui-icon layui-icon-auz"></i> Supervisores
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
+        <i class="layui-icon layui-icon-logout"></i> Salir
+      </button>
+	  
+	  
+  </div>
+</script>
+
+<script type="text/html" id="verifiedTpl">
+  {{# if(d.is_verified == 2){ }}
+    <span class="layui-badge layui-bg-green" style="cursor:pointer">Verificado</span>
+  {{# } else if(d.is_verified == 1){ }}
+    <span class="layui-badge layui-bg-blue" style="cursor:pointer">En Espera</span>
+  {{# } else if(d.is_verified == 3){ }}
+    <span class="layui-badge layui-bg-red" style="cursor:pointer">Rechazado</span>
+  {{# } else { }}
+    <span class="layui-badge layui-bg-purple" style="cursor:pointer">Pre-registro</span>
+  {{# } }}
+</script>
+
+<script type="text/html" id="memberTpl">
+  {{# if(d.member_type == 0){ }}
+    <span class="layui-badge layui-bg-purple" style="cursor:pointer">Invitado</span>
+  {{# } else if(d.member_type == 1){ }}
+    <span class="layui-badge layui-bg-orange" style="cursor:pointer">Voluntario</span>
+  {{# } else if(d.member_type == 2){ }}
+    <span class="layui-badge layui-bg-green" style="cursor:pointer">Militante</span>
+  {{# } else if(d.member_type == 3){ }}
+    <span class="layui-badge layui-bg-cyan" style="cursor:pointer">Concejal</span>
+  {{# } else if(d.member_type == 4){ }}
+    <span class="layui-badge layui-bg-yellow" style="cursor:pointer">Asambleista</span>
+  {{# } }}
+</script>
+
+<script type="text/html" id="TPL-dropdown-manager">
+{{# console.log('Fila d:', d); }}
+  <button class="layui-btn layui-btn-primary dropdown-manager">
+    <span>{{= d.manager_phone || '--' }}</span>
+    <i class="layui-icon layui-icon-down layui-font-10"></i>
+  </button>
+</script>
+
+<script type="text/html" id="UserAction">
+  <div class="layui-clear-space">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">Editar</a>
+    <a class="layui-btn layui-btn-xs" lay-event="message"><i class="layui-icon layui-icon-addition layui-font-12"></i></a>
+	<a href="https://wa.me/591{{ String(d.phone).replace(/\D/g, '') }}" 
+       target="_blank" 
+       class="layui-btn layui-btn-xs btn-wa-table"
+       title="WhatsApp">
+       <svg width="14" height="14" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-top: -2px; vertical-align: middle;">
+         <path d="M15.255 3.713a8 8 0 0 0-5.684-2.36c-4.433 0-8.043 3.603-8.043 8.036 0 1.394.364 2.771 1.045 3.974l-1.164 4.26 4.354-1.14a8.06 8.06 0 0 0 3.8.957c4.434 0 8.044-3.61 8.044-8.043 0-2.145-.84-4.172-2.352-5.692zM4.283 13.11c-.76-.863-1.18-2.312-1.18-3.72a6.467 6.467 0 0 1 6.46-6.46 6.42 6.42 0 0 1 4.568 1.891 6.42 6.42 0 0 1 1.892 4.568 6.467 6.467 0 0 1-6.46 6.46c-1.258 0-2.596-.404-3.562-1.06l-2.343.609z" fill="#fff"></path>
+         <path d="M11.748 10.434c.182.064 1.148.539 1.346.641.198.103.333.15.38.23.048.08.048.475-.119.934s-.95.879-1.33.934c-.34.048-.768.072-1.242-.079a12 12 0 0 1-1.125-.412c-1.979-.854-3.27-2.842-3.364-2.976-.103-.143-.8-1.069-.8-2.035s.507-1.448.689-1.646a.72.72 0 0 1 .522-.246h.38c.12 0 .285-.047.444.34.166.396.562 1.362.61 1.465a.38.38 0 0 1 .015.349c-.063.134-.095.213-.198.324a8 8 0 0 1-.293.348c-.095.095-.198.206-.087.404.119.198.507.84 1.093 1.362.752.673 1.385.879 1.583.974s.309.079.428-.048c.118-.135.49-.578.625-.776s.261-.166.443-.095z" fill="#fff"></path>
+       </svg>
+    </a>
+	<a class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">
+      <i class="layui-icon layui-icon-delete"></i>
+    </a>
+  </div>
+</script>  
+
+<%- include('partials/footer') %>
+
+<script>
+layui.use(['table', 'layer', 'form', 'dropdown'], function(){
+  var table = layui.table;
+  var layer = layui.layer;
+  var form = layui.form;
+  var dropdown = layui.dropdown;
+  
+  const _supabase = supabase.createClient('https://lbjqdvlvzhvduoelvtqm.supabase.co', 'sb_publishable_7UNqrsgI_34GogJBWC4xzg_aFrPaCLW');
+
+  // 1. Render Table
+  table.render({
+    elem: '#mainTable',
+	id: 'mainTableReload',
+    url: '/api/get-data', 
+    toolbar: '#tableToolbar',
+    cols: [[
+      {field:'id', title:'ID', hide: true},
+      {field:'name', title:'Nombre', minWidth:180},
+      {field:'phone', title:'Teléfono', width:80},
+	  {field:'identity_card', title:'C.I.', width:80},
+	  {field:'member_type', title:'Tipo', width:95, align:'center', templet: '#memberTpl', event: 'changeType', style:'cursor: pointer;'},
+      {field:'access_code', title:'Code', width:70, align:'center'},
+      <!-- {field:'manager_phone', title:'Manager', width:100, align:'center'}, -->
+	  {field: 'manager_phone', title: 'Manager', width: 100, unresize: true, align: 'center', templet: '#TPL-dropdown-manager'},
+	  {field:'locality', title:'Localidad', width:90},
+      {field:'voting_place', title:'Recinto', width:120},
+      {field:'voting_table', title:'Mesa', width:80, align:'center'},
+	  {field:'is_verified', title:'Estado', width:110, templet: '#verifiedTpl', align:'center', event: 'changeStatus', style:'cursor: pointer;'},
+      {field:'created_at', title:'Registro', width:80, templet: function(d){
+        return d.created_at ? dayjs(d.created_at).format('DD/MM/YY') : '-';
+      }},
+	  {fixed: 'right', title:'Acciones', width: 150, minWidth: 125, templet: '#UserAction'}
+    ]],
+    page: true,
+	done: function(res, curr, count) {
+      // Llamamos a la función que inicializa los dropdowns después de cargar la tabla
+      initManagerDropdowns();
+    }
+  });
+  
+  const channel = _supabase
+    .channel('members-changes')
+    .on(
+      'postgres_changes',
+      { 
+        event: '*', // Escucha INSERT, UPDATE y DELETE
+        schema: 'public', 
+        table: 'members' 
+      },
+      (payload) => {
+        console.log('Cambio detectado en tiempo real:', payload);
+        
+        // 1. Notificación personalizada según el caso
+        if (payload.eventType === 'UPDATE' && payload.new.is_verified === 1) {
+            layer.msg('¡Nueva verificación pendiente!', { icon: 0});
+        }
+
+        // 2. RECARGA SIEMPRE
+        // Esto hará que la tabla pida los datos de nuevo al servidor 
+        // y aparezca la nueva fila del INSERT inmediatamente.
+        table.reloadData('mainTableReload', {
+          scrollPos: 'fixed'
+        });
+      }
+    )
+    .subscribe((status) => {
+        console.log("Estado suscripción:", status);
+    });
+
+  // 2. Toolbar Events
+  table.on('toolbar(mainFilter)', function(obj){
+    if(obj.event === 'add') showAddModal();
+	if(obj.event === 'goPosts') {
+      window.location.href = '/posts';
+    }
+	
+	if(obj.event === 'goManagers') {
+      window.location.href = '/managers';
+    }
+	
+	if(obj.event === 'goEvents') {
+      window.location.href = '/events';
+    }
+    
+    // Evento de Logout
+    if(obj.event === 'logout') {
+      layer.confirm('¿Deseas cerrar la sesión administrativa?', {
+        title: 'Confirmar Salida',
+        icon: 3,
+        btn: ['Salir', 'Cancelar']
+      }, function(){
+        // Redirigir a la ruta de Express que limpia las cookies
+        window.location.href = '/logout';
+      });
+    }
+	
+  });
+  
+  form.on('submit(searchMembers)', function(data){
+    var field = data.field;
+    var cleanField = {};
+
+    // Solo enviamos los campos que realmente tienen texto
+    for (var key in field) {
+        if (field[key] && field[key].trim() !== "") {
+            cleanField[key] = field[key].trim();
+        }
+    }
+    
+    table.reloadData('mainTableReload', {
+      where: cleanField, 
+      page: { curr: 1 } 
+    });
+    
+    return false; 
+});
+
+
+// Función para cargar los managers y activar el componente dropdown
+  async function initManagerDropdowns() {
+  try {
+    const response = await axios.get('/api/managers-active');
+    const managers = response.data.data;
+
+    const dropdownData = [
+      { title: 'Sin Manager', id: null },
+      ...managers.map(m => ({
+        title: m.name || m.phone.toString(),
+        id: m.phone
+      }))
+    ];
+
+    // TRUCO: Seleccionamos todos los botones y los iteramos
+    // para vincular los datos de la fila de la tabla a cada botón
+    const $ = layui.$;
+    $('.dropdown-manager').each(function() {
+      var elem = $(this);
+      // table.cache contiene los datos actuales de la tabla
+      // Buscamos la fila correspondiente al botón
+      var tr = elem.closest('tr');
+      var rowIndex = tr.data('index');
+      var rowData = table.cache['mainTableReload'][rowIndex];
+
+      dropdown.render({
+        elem: elem,
+        data: dropdownData,
+        click: function(obj) {
+          // obj = datos del dropdown seleccionado
+          // rowData = datos de la fila de la tabla
+          saveManagerAssignment(rowData.id, obj.id, obj.title);
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error("Error inicializando dropdown:", error);
+  }
+}
+  
+  async function saveManagerAssignment(memberId, managerPhone, managerName) {
+    const loading = layer.load(2);
+    
+    const { error } = await _supabase
+      .from('members')
+      .update({ manager_phone: managerPhone })
+      .eq('id', memberId);
+
+    layer.close(loading);
+
+    if (error) {
+      layer.msg('Error: ' + error.message, { icon: 2 });
+    } else {
+      layer.msg('Asignado a: ' + managerName, { icon: 1, time: 1000 });
+      // El Realtime de Supabase que ya tienes configurado recargará la tabla automáticamente
+    }
+  }
+  
+  // 3. Add User Modal
+  function showAddModal(){
+    layer.open({
+      type: 2,
+      title: 'Register New User',
+      area: ['500px', '420px'],  
+      content: '/templ/add-user.html'
+    });
+  }
+  
+  
+  table.on('tool(mainFilter)', function(obj){
+    var data = obj.data;
+    if(obj.event === 'message') showAddPointsModal(obj);
+    if(obj.event === 'edit') showEditModal(data);
+	if(obj.event === 'changeStatus') showVerifyModal(data);
+	if(obj.event === 'delete') confirmDeleteUser(obj);
+  });
+  
+  function confirmDeleteUser(obj) {
+  var data = obj.data;
+
+  if (!data.auth_id) {
+    layer.msg('auth_id de usuario inválido', { icon: 2 });
+    return;
+  }
+
+  layer.confirm(
+    '¿Estás seguro de eliminar al usuario <b>' + (data.phone || data.auth_id) + '</b>?<br>Esta acción no se puede deshacer.',
+    {
+      title: 'Confirmar Eliminación',
+      icon: 3,
+      btn: ['Eliminar', 'Cancelar'],
+      skin: 'layui-layer-admin'
+    },
+    function (index) {
+      var loading = layer.load(2);
+
+      axios.post('/api/delete-user', {
+        auth_id: data.auth_id
+      })
+      .then(function () {
+        layer.close(loading);
+        layer.close(index);
+
+        // Eliminar fila de la tabla sin recargar
+        obj.del();
+
+        layer.msg('Usuario eliminado', { icon: 1, time: 2000 });
+      })
+      .catch(function (err) {
+        layer.close(loading);
+        const msg = err.response?.data?.msg || 'Error de conexión';
+        layer.msg('Error: ' + msg, { icon: 2 });
+      });
+    }
+  );
+}
+  
+  function showVerifyModal(userData) {
+    layer.open({
+        type: 2,
+        title: 'Validación de Identidad: ' + (userData.name || userData.phone),
+        area: ['420px', '480px'],
+        shadeClose: true,
+        anim: 5, // Animación de entrada suave
+        content: '/templ/verify-user.html',
+        success: function(layero, index) {
+            // Obtenemos el objeto window del iframe
+            var iframeWin = window[layero.find('iframe')[0]['name']];
+            
+            // Pasamos los datos al template
+            if (iframeWin && typeof iframeWin.initVerify === 'function') {
+                iframeWin.initVerify(userData);
+            }
+        }
+    });
+}
+  
+  function showEditModal(userData){
+    layer.open({
+      type: 2,
+      title: 'Editar Usuario: ' + (userData.name || userData.phone),
+      area: ['520px', '580px'],
+      content: '/templ/edit-user.html',
+      success: function(layero, index){
+        // Inyectar datos en el formulario del iframe al cargar
+        var iframeWin = window[layero.find('iframe')[0]['name']];
+        iframeWin.layui.form.val('editUserForm', {
+          "uid": userData.uid || userData.id,
+          "name": userData.name,
+          "phone": userData.phone,
+          "dni": userData.dni,
+          "locality": userData.locality,
+          "voting_place": userData.voting_place,
+          "voting_table": userData.voting_table,
+          "points": userData.points,
+          "is_verified": userData.is_verified
+        });
+      }
+    });
+  }
+  
+  function showAddPointsModal(obj) {
+    var data = obj.data;
+    var currentPoints = parseInt(data.points) || 0;
+
+    layer.prompt({
+        title: 'Agregar puntos a: ' + (data.name || data.phone),
+        formType: 0, // Entrada de texto simple
+        value: '',
+        btn: ['Sumar Puntos', 'Cancelar']
+    }, function(value, index) {
+        var pointsToAdd = parseInt(value);
+        
+        // Validación: que sea un número válido
+        if (isNaN(pointsToAdd)) {
+            return layer.msg('Por favor, ingresa un número válido');
+        }
+
+        var newTotal = currentPoints + pointsToAdd;
+        var loading = layer.load(2);
+
+        // Actualizar en Supabase
+        _supabase
+            .from('members')
+            .update({ points: newTotal })
+            .eq('id', data.id)
+            .then(({ error }) => {
+                layer.close(loading);
+                if (error) {
+                    layer.msg('Error: ' + error.message, { icon: 2 });
+                } else {
+                    layer.close(index);
+                    layer.msg('¡Puntos actualizados! Total: ' + newTotal, { icon: 1 });
+                    // No necesitas recargar manualmente si el Realtime está funcionando
+                }
+            });
+    });
+}
+
+
+  
+});
+</script>
+</body>
+</html>

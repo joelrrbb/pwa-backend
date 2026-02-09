@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+  <style>
+    body { padding: 20px; background-color: #fff; }
+    .data-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 5px solid #01AAED;
+      margin-bottom: 20px;
+    }
+    .label-text { color: #666; font-size: 12px; margin-bottom: 5px; }
+    .value-text { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 12px; }
+    .ci-value { font-size: 22px; color: #01AAED; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div class="layui-form" id="verifyForm" lay-filter="verifyForm">
+    <input type="hidden" name="uid">
+
+    <div class="data-card">
+      <div class="label-text">NOMBRE COMPLETO</div>
+      <input type="text" name="name" id="edit_name" placeholder="Escriba el nombre completo..." class="layui-input" style="margin-bottom: 15px; border-color: #01AAED;">
+
+      <div class="label-text">CARNET DE IDENTIDAD (C.I.)</div>
+      <div class="value-text ci-value" id="view_dni">Sin número</div>
+
+      <div class="label-text">FECHA DE NACIMIENTO</div>
+      <div class="value-text" id="view_birth_date">-</div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label" style="width: 100px; padding: 9px 0;">Nuevo Estado</label>
+      <div class="layui-input-block" style="margin-left: 110px;">
+        <select name="is_verified" id="is_verified_select">
+          <option value="0">0 - No enviado</option>
+          <option value="1">1 - En espera</option>
+          <option value="2">2 - Verificado</option>
+          <option value="3">3 - Rechazado</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top: 25px;">
+      <button class="layui-btn layui-btn-normal layui-btn-fluid" lay-submit lay-filter="confirmVerify">
+        Guardar Cambios
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    layui.use(['form', 'layer'], function(){
+      var form = layui.form;
+      var $ = layui.$;
+
+      form.on('submit(confirmVerify)', function(data){
+  const fields = data.field;
+  const uid = fields.uid;
+  const name = fields.name || '';
+  const is_verified = parseInt(fields.is_verified);
+
+  if (!uid) {
+    layer.msg('UID no v¨¢lido', { icon: 2 });
+    return false;
+  }
+
+  const loading = parent.layer.load(2);
+
+  // Enviamos cualquier estado de verificación
+  axios.post('/api/verify-user', { uid, name, is_verified })
+    .then(res => {
+      parent.layer.close(loading);
+      parent.layui.layer.msg('Usuario actualizado correctamente', { icon: 1 });
+      parent.layui.table.reload('mainTable');
+      const index = parent.layer.getFrameIndex(window.name);
+      parent.layer.close(index);
+    })
+    .catch(err => {
+      parent.layer.close(loading);
+      console.error(err);
+      parent.layer.msg(err.response?.data?.msg || 'Error al actualizar usuario', { icon: 2 });
+    });
+
+  return false;
+});
+    });
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const parts = dateStr.split('-');
+      return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+    }
+
+    // Inicializa el modal con datos desde la tabla
+    function initVerify(data) {
+      const $ = layui.$;
+
+      $('#view_dni').text(data.identity_card || 'Sin número');
+      $('#view_birth_date').text(formatDate(data.birth_date || data.fecha_nacimiento));
+
+      layui.form.val('verifyForm', {
+        "uid": data.uid || data.id,
+        "name": data.name || '',
+        "is_verified": data.is_verified
+      });
+
+      layui.form.render('select');
+    }
+  </script>
+</body>
+</html>

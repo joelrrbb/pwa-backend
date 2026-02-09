@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Eventos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+</head>
+<body>
+
+<div class="layui-container" style="margin-top:20px;">
+<h2>Eventos y reuniones</h2>
+ 
+<table id="events-table" lay-filter="events-table"></table>
+</div>
+
+<script type="text/html" id="toolbarDemo">
+  <div class="layui-btn-container">
+    <button class="layui-btn layui-btn-sm" lay-event="goHome">
+      <i class="layui-icon layui-icon-home layui-font-12"></i> Inicio
+    </button>
+	<button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addEvent">
+      <i class="layui-icon layui-icon-add-1 layui-font-12"></i> Agregar
+    </button>
+	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
+      <i class="layui-icon layui-icon-list"></i> Publicaciones
+    </button>
+		
+	<button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
+      <i class="layui-icon layui-icon-auz"></i> Supervisores
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
+        <i class="layui-icon layui-icon-logout"></i> Salir
+      </button>
+  </div>
+</script>
+
+<script type="text/html" id="toolShopper">
+  <div class="layui-clear-space">
+    <a class="layui-btn layui-btn-xs" lay-event="more">Detalles<i class="layui-icon layui-icon-down"></i></a>
+  </div>
+</script>  
+
+<!-- Switch para eliminar -->
+<script type="text/html" id="deleteTpl">
+  <input type="checkbox" 
+         lay-skin="switch" 
+         lay-text="Sí|No"
+         lay-filter="hiddenSwitch"
+         data-id="{{d.id}}" 
+         {{ (d.is_delete === 1 || d.is_delete === true) ? 'checked' : '' }}>
+</script>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
+<script>
+layui.use(['table', 'form'], function(){
+  const table = layui.table;
+  const form = layui.form;
+
+  table.getRowData = function (tableId, elem) {
+    const index = $(elem).closest('tr').data('index');
+    return table.cache[tableId][index] || {};
+  };
+
+  table.render({
+    elem: '#events-table',
+    url: '/api/events',
+    page: true,
+    toolbar: '#toolbarDemo',
+	height: 'full-180',
+    limits: [10, 20, 30],
+    limit: 10,
+    parseData: function(res){
+      return {
+        "code": res.code,
+        "msg": res.msg,
+        "count": res.count, // El total de la DB (ej: 45)
+        "data": res.data    // Los registros de la página (ej: 10)
+      };
+    },
+    cols: [[
+      {type: 'checkbox', fixed: 'left'},
+      { field:'name', title:'Nombre', width:200, align:'center' },
+	  {field: 'image_link', title: 'Imagen', width: 120, align: 'center', templet: d => `<img src="${d.image_link}" style="height:30px;">`},
+	  { field:'redirect_link', title:'Redirección', minwidth:100, align:'center' },
+	  { field:'event_code', title:'Código', minwidth:100, align:'center' },
+	  {field:'is_delete', title:'Ocultar', width:80, templet: '#deleteTpl'},
+      { field:'created_at', title:'Creado', width:120, align:'center', templet: d => dayjs(d.created_at).format('YYYY-MM-DD HH:mm') },
+      { fixed:'right', title:'Acciones', templet:'#toolShopper' }
+    ]],
+  });
+
+ // Evento de cambio de switch bloqueado
+  form.on('switch(hiddenSwitch)', function(data){
+    var id = data.elem.getAttribute('data-id');
+    var newValue = data.elem.checked ? 1 : 0;
+
+    axios.post('/api/event-delete', { id: id, blocked: newValue })
+      .then(res => {
+        layer.msg('Estado actualizado', { icon: 1 });
+      })
+      .catch(err => {
+        layer.msg('Error al actualizar', { icon: 2 });
+        // revertir cambio si falla
+        data.elem.checked = !data.elem.checked;
+        form.render('checkbox');
+      });
+  });
+  
+  // Toolbar
+  table.on('toolbar(events-table)', function(obj){
+  if(obj.event === 'goHome'){
+    window.location.href = '/';
+  } else if(obj.event === 'addEvent'){
+    layer.open({
+      type: 2, // iframe
+      title: 'Agregar clasificador',
+      area: ['700px', '300px'],
+      content: '/templ/add-event.html'
+    });
+  }
+  	
+	if(obj.event === 'goManagers') {
+      window.location.href = '/managers';
+    }
+	
+	if(obj.event === 'goEvents') {
+      window.location.href = '/events';
+    }
+    
+    // Evento de Logout
+    if(obj.event === 'logout') {
+      layer.confirm('¿Deseas cerrar la sesión administrativa?', {
+        title: 'Confirmar Salida',
+        icon: 3,
+        btn: ['Salir', 'Cancelar']
+      }, function(){
+        // Redirigir a la ruta de Express que limpia las cookies
+        window.location.href = '/logout';
+      });
+    }
+});
+ 
+});
+</script>
+
+</body>
+</html>

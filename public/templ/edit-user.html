@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+  <style>
+    body { padding: 20px; background-color: #fff; }
+    .layui-form-label { width: 100px; }
+    .layui-input-block { margin-left: 130px; }
+  </style>
+</head>
+<body>
+  <form class="layui-form" id="editUserForm" lay-filter="editUserForm">
+    <input type="hidden" name="uid">
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Nombre</label>
+      <div class="layui-input-block">
+        <input type="text" name="name" placeholder="Nombre completo" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Teléfono</label>
+      <div class="layui-input-block">
+        <input type="tel" name="phone" readonly class="layui-input layui-disabled">
+        <div class="layui-word-aux" style="font-size: 11px;">El teléfono no se puede editar (ID de cuenta).</div>
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">DNI / CI</label>
+      <div class="layui-input-block">
+        <input type="text" name="dni" placeholder="C.I." class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Localidad</label>
+      <div class="layui-input-block">
+        <input type="text" name="locality" placeholder="Localidad" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Recinto</label>
+      <div class="layui-input-block">
+        <input type="text" name="voting_place" placeholder="Recinto electoral" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Mesa</label>
+      <div class="layui-input-block">
+        <input type="text" name="voting_table" placeholder="Mesa" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Puntos</label>
+      <div class="layui-input-block">
+        <input type="number" name="points" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+  <label class="layui-form-label">Estado</label>
+  <div class="layui-input-block">
+    <select name="is_verified" lay-filter="is_verified">
+      <option value="0">No enviado</option>
+      <option value="1">En espera (Pendiente)</option>
+      <option value="2">Verificado (Aprobado)</option>
+      <option value="3">Rechazado</option>
+    </select>
+  </div>
+</div>
+    
+    <div class="layui-form-item" style="margin-top: 25px;">
+      <div class="layui-input-block">
+        <button class="layui-btn layui-btn-normal layui-btn-fluid" lay-submit lay-filter="updateUser">Actualizar Datos</button>
+      </div>
+    </div>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  
+  <script>
+    layui.use(['form', 'layer'], function(){
+      var form = layui.form;
+      var layer = layui.layer;
+
+      // Escuchar el evento de envío
+      form.on('submit(updateUser)', function(data){
+        var loading = layer.load(2);
+        var field = data.field;
+        
+        // Formatear booleano del switch
+        field.is_verified = parseInt(field.is_verified);
+        if (isNaN(field.is_verified)) {
+          field.is_verified = 0;
+        }
+
+        // Aseguramos que puntos también sea número
+        field.points = parseInt(field.points) || 0;
+
+        axios.post('/api/update-user', field) // Debes crear esta ruta en tu backend
+          .then(res => {
+            layer.close(loading);
+            parent.layui.layer.msg('Usuario actualizado', {icon: 1});
+            parent.layui.table.reload('mainTable');
+            var index = parent.layer.getFrameIndex(window.name);
+            parent.layer.close(index);
+          })
+          .catch(err => {
+            layer.close(loading);
+            var msg = err.response ? err.response.data.msg : 'Error al actualizar';
+            layer.msg(msg, {icon: 2});
+          });
+          
+        return false; 
+      });
+    });
+  </script>
+</body>
+</html>

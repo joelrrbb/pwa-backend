@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Redes Sociales</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+</head>
+<body>
+
+<div class="layui-container" style="margin-top:20px;">
+<h2>Publicaciones</h2>
+ 
+<table id="posts-table" lay-filter="posts-table"></table>
+</div>
+
+<script type="text/html" id="toolbarDemo">
+  <div class="layui-btn-container">
+    <button class="layui-btn layui-btn-sm" lay-event="goHome">
+      <i class="layui-icon layui-icon-home layui-font-12"></i> Inicio
+    </button>
+	<button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addPost">
+      <i class="layui-icon layui-icon-add-1 layui-font-12"></i> Agregar
+    </button>
+	<button class="layui-btn layui-btn-sm layui-bg-green" lay-event="goEvents">
+      <i class="layui-icon layui-icon-date"></i> Eventos
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
+      <i class="layui-icon layui-icon-auz"></i> Supervisores
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
+        <i class="layui-icon layui-icon-logout"></i> Salir
+      </button>
+  </div>
+</script>
+
+<script type="text/html" id="toolShopper">
+  <div class="layui-clear-space">
+    <a class="layui-btn layui-btn-xs" lay-event="more">Detalles<i class="layui-icon layui-icon-down"></i></a>
+  </div>
+</script>  
+
+<!-- scope 1: todos, 2: voluntarios, 3 militantes -->
+<script type="text/html" id="alcanceTpl">
+  {{# if(d.scope_members === 1){ }}
+    <span class="layui-badge layui-bg-blue">Todos</span>
+  {{# } else if(d.scope_members === 2){ }}
+    <span class="layui-badge layui-bg-orange">Voluntarios</span>
+  {{# } else if(d.scope_members === 3){ }}
+    <span class="layui-badge layui-bg-green">Militantes</span>
+  {{# } else { }}
+    <span class="layui-badge layui-bg-gray">No definido</span>
+  {{# } }}
+</script>
+
+<!-- Switch para bloqueado -->
+<script type="text/html" id="hiddenTpl">
+  <input type="checkbox" 
+         lay-skin="switch" 
+         lay-text="Sí|No"
+         lay-filter="hiddenSwitch"
+         data-id="{{d.id}}" 
+         {{ (d.is_hidden === 1 || d.is_hidden === true) ? 'checked' : '' }}>
+</script>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
+<script>
+layui.use(['table', 'form', 'dropdown'], function(){
+  const table = layui.table;
+  const form = layui.form;
+  var dropdown = layui.dropdown;
+
+  table.getRowData = function (tableId, elem) {
+    const index = $(elem).closest('tr').data('index');
+    return table.cache[tableId][index] || {};
+  };
+
+  table.render({
+    elem: '#posts-table',
+    url: '/api/posts',
+    page: true,
+    toolbar: '#toolbarDemo',
+	height: 'full-180',
+    limits: [10, 20, 30],
+    limit: 10,
+    parseData: function(res){
+      return {
+        "code": res.code,
+        "msg": res.msg,
+        "count": res.count, // El total de la DB (ej: 45)
+        "data": res.data    // Los registros de la página (ej: 10)
+      };
+    },
+    cols: [[
+      { field:'id', title:'ID', width:60, sort:true },
+      {field:'thumbnail', title:'Red Social', width:100, align:'center', templet: d => d.thumbnail ? `<img src="${d.thumbnail}" style="width:25px;height:25px;object-fit:cover;border-radius:4px;">` : '<i class="layui-icon layui-icon-picture" style="font-size:30px;color:#eee;"></i>'},
+      { field:'caption', title:'Título', width:150, align:'center' },
+	  {field:'description', title:'Descripción', minWidth:200, align:'center'},
+	  {field:'points', title:'Puntos', width:70, align:'center'},
+	  {field:'duration', title:'Sec', width:60, align:'center'},
+	  {field:'link_url', title:'Link', minWidth:200, align:'center'},
+	  { field:'deadline', title:'Vencimiento', width:160, align:'center', templet: d => d.deadline ? dayjs(d.deadline).format('YYYY-MM-DD HH:mm') : '<span style="color: #999;">Sin límite</span>' },
+      {field:'scope_members', title:'Alcance', width:110, align:'center', templet: '#alcanceTpl'},
+      {field:'is_hidden', title:'Ocultar', width:80, templet: '#hiddenTpl'},
+      { field:'created_at', title:'Creado', width:120, align:'center', templet: d => dayjs(d.created_at).format('YYYY-MM-DD HH:mm') },
+      { fixed:'right', title:'Acciones', templet:'#toolShopper' }
+    ]],
+  });
+
+ // Evento de cambio de switch bloqueado
+  form.on('switch(hiddenSwitch)', function(data){
+    var id = data.elem.getAttribute('data-id');
+    var newValue = data.elem.checked ? 1 : 0;
+
+    axios.post('/api/post-update-hidden', { id: id, blocked: newValue })
+      .then(res => {
+        layer.msg('Estado actualizado', { icon: 1 });
+      })
+      .catch(err => {
+        layer.msg('Error al actualizar', { icon: 2 });
+        // revertir cambio si falla
+        data.elem.checked = !data.elem.checked;
+        form.render('checkbox');
+      });
+  });
+  
+  // Toolbar
+  table.on('toolbar(posts-table)', function(obj){
+  if(obj.event === 'goHome'){
+    window.location.href = '/';
+  } else if(obj.event === 'addPost'){
+    layer.open({
+      type: 2, // iframe
+      title: 'Agregar publicación',
+      area: ['700px', '600px'],
+      content: '/templ/add-post.html'
+    });
+  }
+  
+  if(obj.event === 'goManagers') {
+      window.location.href = '/managers';
+    }
+	
+	if(obj.event === 'goEvents') {
+      window.location.href = '/events';
+    }
+    
+    // Evento de Logout
+    if(obj.event === 'logout') {
+      layer.confirm('¿Deseas cerrar la sesión administrativa?', {
+        title: 'Confirmar Salida',
+        icon: 3,
+        btn: ['Salir', 'Cancelar']
+      }, function(){
+        // Redirigir a la ruta de Express que limpia las cookies
+        window.location.href = '/logout';
+      });
+    }
+});
+
+  table.on('tool(posts-table)', function(obj){
+    var data = obj.data;
+    if(obj.event === 'more'){
+      dropdown.render({
+        elem: this,
+        show: true,
+        data: [{
+          title: 'Editar',
+          id: 'edit'
+        },{
+          title: 'Detalles',
+          id: 'details'
+        }],
+        click: function(menudata){
+          if(menudata.id === 'edit'){
+		  			
+			layer.open({
+				type: 2,
+				title: 'Editar',
+				area: ['800px', '80%'],
+				btn: false,
+				content: `/templ/edit-post.html?id=${data.id}`
+				});
+				
+          } else if(menudata.id === 'details'){
+            layer.confirm('Eliminar fila [id: '+ data.id +']', function(index){
+              obj.del(); 
+              layer.close(index);
+         
+            });
+          } 
+        },
+        align: 'right',
+        style: 'box-shadow: 1px 1px 10px rgb(0 0 0 / 12%);'
+      });
+    }
+	
+  });
+  
+  
+  
+  
+});
+</script>
+
+</body>
+</html>

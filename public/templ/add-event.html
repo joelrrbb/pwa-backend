@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Agregar Evento</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+</head>
+<body>
+<div class="layui-container" style="padding: 20px;">
+  <form class="layui-form" id="addManagerForm">
+    
+    <div class="layui-form-item">
+      <label class="layui-form-label">Nombre</label>
+      <div class="layui-input-block">
+        <input type="text" name="name" required lay-verify="required" placeholder="Nombre completo del supervisor" class="layui-input">
+      </div>
+    </div>
+	<div class="layui-form-item">
+		<label class="layui-form-label">Código</label>
+		<div class="layui-input-block">
+			<input
+		type="text"
+		name="event_code"
+		id="event_code"
+		readonly
+		class="layui-input"
+		>
+		</div>
+	</div>
+	<div class="layui-form-item">
+      <label class="layui-form-label">Link Imagen</label>
+      <div class="layui-input-block">
+        <input type="text" name="image_link" required lay-verify="required" placeholder="URL de la imagen" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Redirección</label>
+      <div class="layui-input-block">
+        <input type="text" name="redirect_link" placeholder="URL a la que redirige" class="layui-input">
+      </div>
+    </div>
+
+    
+    
+    <div class="layui-form-item" style="margin-top: 25px;">
+      <div class="layui-input-block">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitAddEvent">Guardar Evento</button>
+        <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">Cancelar</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+layui.use(['form', 'layer'], function(){
+  var layer = layui.layer;
+  var form = layui.form;
+
+  // Generar código tipo e-xxxx
+  function generateEventCode() {
+    const chars = '0123456789';
+    let code = 'e-';
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  // ✅ GENERAR CÓDIGO AL ABRIR EL MODAL
+  var codeInput = document.getElementById('event_code');
+  if (codeInput) {
+    codeInput.value = generateEventCode();
+  }
+
+  // Submit del formulario
+  form.on('submit(submitAddEvent)', function(data){
+    var loadIndex = layer.load(2);
+
+    axios.post('/api/event-add', {
+      name: data.field.name || null,
+      event_code: data.field.event_code,
+      image_link: data.field.image_link,
+      redirect_link: data.field.redirect_link || null
+    })
+    .then(res => {
+      layer.close(loadIndex);
+
+      if(res.data.code === 0){
+        layer.msg('Evento registrado con éxito', { icon: 1, time: 1000 }, function(){
+          var index = parent.layer.getFrameIndex(window.name);
+          parent.layui.table.reload('events-table');
+          parent.layer.close(index);
+        });
+      } else {
+        layer.msg(res.data.msg || 'Error al guardar', { icon: 2 });
+      }
+    })
+    .catch(err => {
+      layer.close(loadIndex);
+      console.error(err);
+      layer.msg('Error de red o servidor', { icon: 2 });
+    });
+
+    return false;
+  });
+
+  // Cancelar
+  document.getElementById('cancelBtn').onclick = function(){
+    var index = parent.layer.getFrameIndex(window.name);
+    parent.layer.close(index);
+  };
+});
+</script>
+
+</body>
+</html>

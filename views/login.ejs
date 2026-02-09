@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Panel de Administración</title>
+    <style>
+        :root {
+            --primary-color: #3ecf8e; 
+            --primary-hover: #36b37a;
+            --bg-color: #f4f7f6;
+            --text-main: #2d3436;
+            --text-muted: #636e72;
+            --white: #ffffff;
+            --shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body { 
+            background: var(--bg-color); 
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: var(--text-main);
+        }
+
+        .login-card { 
+            width: 100%; 
+            max-width: 400px; 
+            padding: 2.5rem; 
+            border-radius: 16px; 
+            background: var(--white); 
+            box-shadow: var(--shadow); 
+        }
+
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .header p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .form-group { margin-bottom: 1.2rem; }
+        
+        label { 
+            display: block; 
+            font-size: 0.85rem; 
+            font-weight: 600; 
+            margin-bottom: 0.5rem; 
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #dfe6e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.1); }
+
+        .btn {
+            width: 100%;
+            margin-top: 1rem;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: var(--primary-hover); }
+        .btn:disabled { background-color: #b2bec3; cursor: not-allowed; }
+
+        .loading-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(62, 207, 142, 0.2);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none; }
+		
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="header">
+        <h2>Ingresar al sistema</h2>
+        <p>Introduce tus credenciales de Supabase</p>
+    </div>
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="admin@ejemplo.com">
+    </div>
+
+    <div class="form-group">
+        <label for="pass">Contraseña</label>
+        <input type="password" id="pass" placeholder="••••••••">
+    </div>
+
+    <button id="loginBtn" onclick="login()" class="btn">Entrar al Dashboard</button>
+    
+    <div id="loading" class="loading-container hidden">
+        <div class="spinner"></div>
+        <span style="font-size: 0.85rem; color: var(--text-muted)">Iniciando sesión...</span>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // 1. Evitamos conflicto de nombres llamando a la variable 'supabaseClient'
+    const SUPABASE_URL = 'https://lbjqdvlvzhvduoelvtqm.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_7UNqrsgI_34GogJBWC4xzg_aFrPaCLW';
+
+    // Usamos el objeto global 'supabase' (de la librería) para crear el cliente
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('pass').value;
+    const btn = document.getElementById('loginBtn');
+    const loading = document.getElementById('loading');
+
+    if (!email || !password) return alert("Completa todos los campos");
+
+    btn.disabled = true;
+    loading.classList.remove('hidden');
+
+    try {
+        // 1. Autenticación inicial con Supabase
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) throw error;
+
+        // 2. Intentar crear la sesión en tu servidor Express
+        const response = await fetch('/sessionLogin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: data.session.access_token })
+        });
+
+        // Parseamos la respuesta del servidor
+        const result = await response.json();
+
+        if (response.ok) {
+            // Todo bien, vamos al dashboard
+            window.location.assign('/');
+        } else {
+            // Si el servidor responde con error (ej. 403 No Admin)
+            // Forzamos logout en el cliente para que no quede sesión abierta
+            await supabaseClient.auth.signOut();
+            
+            // Mostramos el mensaje exacto que viene del servidor
+            alert("Acceso Denegado: " + (result.error || "No tienes permisos de administrador."));
+            
+            btn.disabled = false;
+            loading.classList.add('hidden');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Error: " + (error.message || "No se pudo iniciar sesión"));
+        btn.disabled = false;
+        loading.classList.add('hidden');
+    }
+}
+</script>
+
+</body>
+</html>

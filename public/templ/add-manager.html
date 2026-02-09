@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Agregar Supervisor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+</head>
+<body>
+<div class="layui-container" style="padding: 20px;">
+  <form class="layui-form" id="addManagerForm">
+    
+    <div class="layui-form-item">
+      <label class="layui-form-label">Nombre</label>
+      <div class="layui-input-block">
+        <input type="text" name="name" required lay-verify="required" placeholder="Nombre completo del supervisor" class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Teléfono</label>
+      <div class="layui-input-block">
+        <input type="number" name="phone" required lay-verify="required|number" placeholder="Ej: 54911..." class="layui-input">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Equipo</label>
+      <div class="layui-input-block">
+        <input type="number" name="team_size" value="0" class="layui-input" placeholder="Cantidad de personas a cargo">
+      </div>
+    </div>
+    
+    <div class="layui-form-item" style="margin-top: 25px;">
+      <div class="layui-input-block">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitAddManager">Guardar Supervisor</button>
+        <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">Cancelar</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+layui.use(['form', 'layer'], function(){
+  var layer = layui.layer;
+  var form = layui.form;
+  
+  form.on('submit(submitAddManager)', function(data){
+    // Mostramos un loader para mejorar UX
+    var loadIndex = layer.load(2);
+
+    // IMPORTANTE: URL corregida para apuntar al endpoint de managers
+    axios.post('/api/manager-add', data.field)
+      .then(res => {
+        layer.close(loadIndex);
+        if(res.data.code === 0){
+          layer.msg('Supervisor registrado con éxito', {icon: 1, time: 1000}, function(){
+            var index = parent.layer.getFrameIndex(window.name);
+            // Recargamos la tabla de la ventana padre (asegúrate que el ID coincida)
+            parent.layui.table.reload('managers-table'); 
+            parent.layer.close(index);
+          });
+        } else {
+          layer.msg(res.data.msg || 'Error al guardar', {icon: 2});
+        }
+      })
+      .catch(err => {
+        layer.close(loadIndex);
+        console.error("Error:", err);
+        layer.msg('Error de red o servidor', {icon: 2});
+      });
+    return false; // Evita el refresh de la página
+  });
+
+  // Botón Cancelar
+  document.getElementById('cancelBtn').onclick = function(){
+    var index = parent.layer.getFrameIndex(window.name);
+    parent.layer.close(index);
+  };
+});
+</script>
+</body>
+</html>

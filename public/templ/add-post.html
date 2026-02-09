@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Agregar Publicación</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+</head>
+<body>
+<div class="layui-container" style="padding: 20px;">
+  <form class="layui-form" id="addPostForm">
+    <div class="layui-form-item">
+      <label class="layui-form-label">Título</label>
+      <div class="layui-input-block">
+        <input type="text" name="caption" required placeholder="Título" class="layui-input">
+      </div>
+    </div>
+	<div class="layui-form-item">
+      <label class="layui-form-label">Descripción</label>
+      <div class="layui-input-block">
+        <textarea name="description" placeholder="Detalles de la publicación" class="layui-textarea"></textarea>
+      </div>
+    </div>
+	
+	<div class="layui-form-item">
+    <label class="layui-form-label">Plataforma</label>
+    <div class="layui-input-block">
+        <select name="thumbnail" id="platformSelect" lay-filter="platformFilter" required>
+            <option value="">Seleccione una plataforma...</option>
+            <option value="/tiktok.svg">TikTok</option>
+            <option value="/facebook.svg">Facebook</option>
+            <option value="/whatsapp.svg">Whatsapp</option>
+        </select>
+        <div class="layui-word-aux">Se asignará una imagen predeterminada según la red social.</div>
+        <img id="previewImg" style="width: 80px; height: 80px; margin-top: 10px; display: none; border-radius: 8px; object-fit: cover; border: 1px solid #eee;">
+    </div>
+</div>
+
+  
+        <div class="layui-form-item">
+          <label class="layui-form-label">Link URL</label>
+          <div class="layui-input-block">
+            <input type="url" name="link_url" placeholder="URL de Facebook/TikTok" class="layui-input">
+          </div>
+        </div>
+      
+		<div class="layui-form-item">
+          <label class="layui-form-label">Puntos</label>
+          <div class="layui-input-block">
+            <input type="number" name="points" class="layui-input">
+          </div>
+        </div>
+ 
+        <div class="layui-form-item">
+          <label class="layui-form-label">Segundos</label>
+          <div class="layui-input-block">
+            <input type="number" name="duration" class="layui-input">
+          </div>
+        </div>
+
+	
+	<div class="layui-form-item">
+		<label class="layui-form-label">Vencimiento</label>
+		<div class="layui-input-block">
+		<input type="text" name="deadline" class="layui-input" id="ID-laydate-type-datetime-1" placeholder="yyyy-MM-dd HH:mm:ss">
+		</div>
+	</div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label">Alcance</label>
+      <div class="layui-input-block">
+        <select name="scope_members">
+          <option value="1">Todos</option>
+          <option value="2">Voluntarios</option>
+          <option value="3">Militantes</option>
+        </select>
+      </div>
+    </div>
+
+	<div class="layui-form-item">
+      <div class="layui-input-block">
+        <button class="layui-btn" lay-submit lay-filter="submitAddPost">Guardar</button>
+        <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">Cancelar</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+layui.use(['form', 'layer', 'laydate'], function(){
+  var layer = layui.layer;
+  var form = layui.form;
+  var laydate = layui.laydate;  
+
+  // Inicializar Fecha
+  laydate.render({
+    elem: '#ID-laydate-type-datetime-1',
+    type: 'datetime',
+    format: 'yyyy-MM-dd HH:mm:ss',
+    lang: 'en',
+	fullPanel: true
+  });
+
+  form.on('submit(submitAddPost)', function(data){
+    // LOG para ver qué se va a enviar
+    console.log("Datos enviados:", data.field);
+
+    axios.post('/api/post-add', data.field)
+      .then(res => {
+        // Ajustado para usar res.data.code como en el API anterior
+        if(res.data.code === 0){
+          layer.msg('Publicación agregada', {icon: 1, time: 1000}, function(){
+            var index = parent.layer.getFrameIndex(window.name);
+            parent.layui.table.reload('posts-table');
+            parent.layer.close(index);
+          });
+        } else {
+          // Mostrar el mensaje real de error que viene del servidor
+          layer.msg(res.data.msg || 'Error desconocido', {icon: 2});
+        }
+      })
+      .catch(err => {
+        // LOG detallado del error en consola
+        console.error("Error Axios:", err.response ? err.response.data : err.message);
+        const errorMsg = err.response && err.response.data ? err.response.data.msg : 'Error de conexión';
+        layer.msg(errorMsg, {icon: 2});
+      });
+    return false;
+  });
+
+  // Cancelar
+  document.getElementById('cancelBtn').onclick = function(){
+    var index = parent.layer.getFrameIndex(window.name);
+    parent.layer.close(index);
+  };
+});
+
+// Listener de imagen
+document.getElementById('thumbnailInput').addEventListener('input', function(e){
+  const img = document.getElementById('previewImg');
+  if(e.target.value) {
+    img.src = e.target.value;
+    img.style.display = 'block';
+  } else {
+    img.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>

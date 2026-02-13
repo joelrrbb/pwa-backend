@@ -18,9 +18,20 @@
     <button class="layui-btn layui-btn-sm" lay-event="goHome">
       <i class="layui-icon layui-icon-home layui-font-12"></i> Inicio
     </button>
-	<button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addShopper">
+	<button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addManager">
       <i class="layui-icon layui-icon-add-1 layui-font-12"></i> Agregar
     </button>
+	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
+      <i class="layui-icon layui-icon-list"></i> Publicaciones
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-bg-green" lay-event="goEvents">
+      <i class="layui-icon layui-icon-date"></i> Eventos
+    </button>
+	
+	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
+        <i class="layui-icon layui-icon-logout"></i> Salir
+      </button>
   </div>
 </script>
 
@@ -103,7 +114,7 @@ layui.use(['table', 'form'], function(){
   table.on('toolbar(managers-table)', function(obj){
   if(obj.event === 'goHome'){
     window.location.href = '/';
-  } else if(obj.event === 'addShopper'){
+  } else if(obj.event === 'addManager'){
     layer.open({
       type: 2, // iframe
       title: 'Agregar clasificador',
@@ -111,6 +122,26 @@ layui.use(['table', 'form'], function(){
       content: '/templ/add-manager.html'
     });
   }
+  
+  if(obj.event === 'goManagers') {
+      window.location.href = '/managers';
+    }
+	
+	if(obj.event === 'goPosts') {
+      window.location.href = '/posts';
+    }
+    
+    // Evento de Logout
+    if(obj.event === 'logout') {
+      layer.confirm('¿Deseas cerrar la sesión administrativa?', {
+        title: 'Confirmar Salida',
+        icon: 3,
+        btn: ['Salir', 'Cancelar']
+      }, function(){
+        // Redirigir a la ruta de Express que limpia las cookies
+        window.location.href = '/logout';
+      });
+    }
 });
  
 });

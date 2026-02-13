@@ -1,6 +1,8 @@
 # Dependencias
 node_modules/
 jspm_packages/
+.wwebjs_auth
+.wwebjs_cache
 
 # Variables de entorno (¡CRÍTICO!)
 .env

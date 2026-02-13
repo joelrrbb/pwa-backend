@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import cookieParser from 'cookie-parser';
 import { generateSixDigitCode } from './utils/codeGenerator.js';
+import { startWhatsApp } from './whatsapp.js';
 import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -36,6 +37,8 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// startWhatsApp(supabaseAdmin);
 
 // --- MIDDLEWARE: VERIFICAR SESIÓN ---
 
@@ -161,7 +164,8 @@ app.post('/api/add-user', async (req, res) => {
       manager_phone,
       member_type,
       tier,
-	  id_slot
+	  id_slot,
+	  access_code: incomingCode
     } = req.body;
 
     // Validación básica
@@ -170,7 +174,7 @@ app.post('/api/add-user', async (req, res) => {
     }
 
     const email = `${phone}@app.com`;
-    const access_code = generateSixDigitCode();
+    const access_code = incomingCode || generateSixDigitCode();
 
     /* ==========================================================
        1️ VERIFICAR SI EL TELÉFONO YA EXISTE EN MEMBERS

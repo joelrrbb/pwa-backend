@@ -150,13 +150,13 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
       {field:'points', title:'Puntos', width:70, align:'center'},
 	  {field: 'manager_phone', title: 'Manager', width: 100, unresize: true, align: 'center', templet: '#TPL-dropdown-manager'},
 	  {field:'locality', title:'Localidad', width:90},
-      {field:'voting_place', title:'Recinto', width:120},
-      {field:'voting_table', title:'Mesa', width:80, align:'center'},
-	  {field:'is_verified', title:'Estado', width:110, templet: '#verifiedTpl', align:'center', event: 'changeStatus', style:'cursor: pointer;'},
+      {field:'voting_place', title:'Recinto', width:120,sort:'true'},
+      {field:'voting_table', title:'Mesa', width:80, align:'center',sort:'true'},
+	  {field:'is_verified', title:'Estado', width:110, templet: '#verifiedTpl', align:'center', event: 'changeStatus', style:'cursor: pointer;', sort:'true'},
       {field:'created_at', title:'Registro', width:80, templet: function(d){
         return d.created_at ? dayjs(d.created_at).format('DD/MM/YY') : '-';
       }},
-	  {fixed: 'right', title:'Acciones', width: 150, minWidth: 125, templet: '#UserAction'}
+	  {fixed: 'right', title:'Acciones', width: 150, minWidth: 125, templet: '#UserAction', sort:'true'}
     ]],
     page: true,
 	done: function(res, curr, count) {

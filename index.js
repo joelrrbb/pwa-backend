@@ -306,15 +306,31 @@ app.post('/api/delete-user', async (req, res) => {
 
 
 app.post('/api/verify-user', async (req, res) => {
-  const { uid, name, is_verified } = req.body;
+  // 1. Extraemos los nuevos campos del body
+  const { 
+    uid, 
+    name, 
+    is_verified, 
+    identity_card, 
+    locality, 
+    voting_place, 
+    voting_table 
+  } = req.body;
 
   if (!uid) return res.status(400).send({ msg: 'UID requerido' });
 
   try {
-    // Actualizamos cualquier valor de is_verified
+    // 2. Incluimos los campos en el objeto de actualización
     const { data, error } = await supabaseAdmin
       .from('members')
-      .update({ name, is_verified })
+      .update({ 
+        name, 
+        is_verified,
+        identity_card, 
+        locality,
+        voting_place,
+        voting_table 
+      })
       .eq('id', uid)
       .select();
 
@@ -322,9 +338,11 @@ app.post('/api/verify-user', async (req, res) => {
 
     res.status(200).send({ msg: 'Usuario actualizado', data });
   } catch (error) {
+    console.error("Error en verify-user:", error);
     res.status(500).send({ msg: error.message });
   }
 });
+
 // GET: Obtener referidos de un usuario
 app.get('/api/get-referidos', async (req, res) => {
   const { referrer_id } = req.query;

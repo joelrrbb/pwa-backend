@@ -12,9 +12,23 @@
       border-left: 5px solid #01AAED;
       margin-bottom: 20px;
     }
-    .label-text { color: #666; font-size: 12px; margin-bottom: 5px; }
-    .value-text { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 12px; }
-    .ci-value { font-size: 22px; color: #01AAED; letter-spacing: 1px; }
+    .label-text { color: #666; font-size: 11px; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+    .input-margin { margin-bottom: 12px; }
+    
+    /* Estilo para los campos clickeables para copiar */
+    .copy-click { 
+      cursor: pointer; 
+      transition: all 0.2s;
+    }
+    .copy-click:hover { 
+      border-color: #01AAED !important; 
+      background-color: #f0f9ff !important; 
+    }
+    .copy-click:active { transform: scale(0.98); }
+
+    .ci-value-input { font-size: 18px; color: #01AAED; font-weight: bold; }
+    .location-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .readonly-field { background-color: #f1f5f9 !important; color: #64748b; }
   </style>
 </head>
 <body>
@@ -22,14 +36,34 @@
     <input type="hidden" name="uid">
 
     <div class="data-card">
-      <div class="label-text">NOMBRE COMPLETO</div>
-      <input type="text" name="name" id="edit_name" placeholder="Escriba el nombre completo..." class="layui-input" style="margin-bottom: 15px; border-color: #01AAED;">
+      <div class="label-text">Nombre Completo</div>
+      <input type="text" name="name" placeholder="Nombre completo" class="layui-input input-margin">
 
-      <div class="label-text">CARNET DE IDENTIDAD (C.I.)</div>
-      <div class="value-text ci-value" id="view_dni">Sin número</div>
+      <div class="location-grid">
+        <div>
+          <div class="label-text">Carnet de Identidad</div>
+          <input type="text" name="identity_card" id="copy_ci" readonly 
+                 class="layui-input input-margin ci-value-input copy-click" 
+                 title="Haz clic para copiar">
+        </div>
+        <div>
+          <div class="label-text">Fecha de Nacimiento</div>
+          <input type="text" name="birth_date" id="copy_birth" readonly 
+                 class="layui-input input-margin readonly-field copy-click" 
+                 title="Haz clic para copiar">
+        </div>
+      </div>
 
-      <div class="label-text">FECHA DE NACIMIENTO</div>
-      <div class="value-text" id="view_birth_date">-</div>
+      <hr style="margin: 5px 0 15px 0; opacity: 0.1;">
+
+      <div class="label-text">Localidad / Municipio</div>
+      <input type="text" name="locality" placeholder="Ej. Sucre" class="layui-input input-margin">
+
+      <div class="label-text">Recinto Electoral</div>
+      <input type="text" name="voting_place" placeholder="Nombre del recinto" class="layui-input input-margin">
+
+      <div class="label-text">Mesa de Votación</div>
+      <input type="text" name="voting_table" placeholder="Número de mesa" class="layui-input input-margin">
     </div>
 
     <div class="layui-form-item">
@@ -44,9 +78,9 @@
       </div>
     </div>
 
-    <div style="margin-top: 25px;">
+    <div style="margin-top: 20px;">
       <button class="layui-btn layui-btn-normal layui-btn-fluid" lay-submit lay-filter="confirmVerify">
-        Guardar Cambios
+        Guardar y Verificar
       </button>
     </div>
   </div>
@@ -54,63 +88,78 @@
   <script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>
-    layui.use(['form', 'layer'], function(){
-      var form = layui.form;
-      var $ = layui.$;
 
-      form.on('submit(confirmVerify)', function(data){
-  const fields = data.field;
-  const uid = fields.uid;
-  const name = fields.name || '';
-  const is_verified = parseInt(fields.is_verified);
+layui.use(['form', 'layer'], function(){
+  var form = layui.form;
+  var layer = layui.layer;
+  var $ = layui.$;
 
-  if (!uid) {
-    layer.msg('UID no v¨¢lido', { icon: 2 });
-    return false;
-  }
-
-  const loading = parent.layer.load(2);
-
-  // Enviamos cualquier estado de verificación
-  axios.post('/api/verify-user', { uid, name, is_verified })
-    .then(res => {
-      parent.layer.close(loading);
-      parent.layui.layer.msg('Usuario actualizado correctamente', { icon: 1 });
-      parent.layui.table.reload('mainTable');
-      const index = parent.layer.getFrameIndex(window.name);
-      parent.layer.close(index);
-    })
-    .catch(err => {
-      parent.layer.close(loading);
-      console.error(err);
-      parent.layer.msg(err.response?.data?.msg || 'Error al actualizar usuario', { icon: 2 });
-    });
-
-  return false;
-});
-    });
-
-    function formatDate(dateStr) {
-      if (!dateStr) return '-';
-      const parts = dateStr.split('-');
-      return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
-    }
-
-    // Inicializa el modal con datos desde la tabla
-    function initVerify(data) {
-      const $ = layui.$;
-
-      $('#view_dni').text(data.identity_card || 'Sin número');
-      $('#view_birth_date').text(formatDate(data.birth_date || data.fecha_nacimiento));
-
-      layui.form.val('verifyForm', {
-        "uid": data.uid || data.id,
-        "name": data.name || '',
-        "is_verified": data.is_verified
+  // Lógica de copiado
+  $('.copy-click').on('click', function() {
+    var text = $(this).val();
+    if(!text || text === 'Sin número' || text === '-') return;
+    navigator.clipboard.writeText(text).then(function() {
+      layer.msg('Copiado', { 
+        time: 800, 
+        offset: 't', 
+        style: 'background-color: #fff; color: #000; border: 1px solid #e2e8f0;' 
       });
+    });
+  });
 
-      layui.form.render('select');
+  // Evento de Guardar
+  form.on('submit(confirmVerify)', function(data){
+    const fields = data.field;
+    
+    // Si el estado seleccionado es "1 - En espera"
+    if (parseInt(fields.is_verified) === 1) {
+      layer.confirm('Estás guardando información en estado <b>"En Espera"</b>. ¿Confirmas que no deseas verificar al usuario todavía?', {
+        title: 'Aviso de Verificación',
+        btn: ['Confirmar y Guardar', 'Cancelar'],
+        icon: 3
+      }, function(index){
+        layer.close(index);
+        sendData(fields); // Guardar si el admin confirma
+      });
+    } else {
+      // Si es cualquier otro estado, guardar directo
+      sendData(fields);
     }
+    return false;
+  });
+
+  // Función de envío
+  function sendData(fields) {
+    const loading = parent.layer.load(2);
+    axios.post('/api/verify-user', fields)
+      .then(res => {
+        parent.layer.close(loading);
+        parent.layui.layer.msg('Datos actualizados', { icon: 1 });
+        parent.layui.table.reload('mainTableReload'); 
+        parent.layer.close(parent.layer.getFrameIndex(window.name));
+      })
+      .catch(err => {
+        parent.layer.close(loading);
+        parent.layer.msg('Error al actualizar', { icon: 2 });
+      });
+  }
+});
+
+// Inicialización de datos
+function initVerify(data) {
+  layui.form.val('verifyForm', {
+    "uid": data.uid || data.id,
+    "name": data.name || '',
+    "identity_card": data.identity_card || '',
+    "birth_date": data.birth_date || data.fecha_nacimiento || '',
+    "locality": data.locality || '',
+    "voting_place": data.voting_place || '',
+    "voting_table": data.voting_table || '',
+    "is_verified": data.is_verified
+  });
+  layui.form.render('select');
+}
+
   </script>
 </body>
 </html>

@@ -50,7 +50,7 @@
     <button class="layui-btn layui-btn-sm" lay-event="add">
       <i class="layui-icon layui-icon-add-1"></i> Agregar
     </button>
-	
+	<% if (user.role === 'admin') { %>
 	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
       <i class="layui-icon layui-icon-list"></i> Publicaciones
     </button>
@@ -62,12 +62,10 @@
 	<button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
       <i class="layui-icon layui-icon-auz"></i> Supervisores
     </button>
-	
+	<% } %>
 	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
         <i class="layui-icon layui-icon-logout"></i> Salir
       </button>
-	  
-	  
   </div>
 </script>
 
@@ -106,9 +104,24 @@
 </script>
 
 <script type="text/html" id="UserAction">
+<% if (user.role === 'admin') { %>
   <div class="layui-clear-space">
-    
+    <a class="layui-btn layui-btn-xs" lay-event="edit">Editar</a>
+    <a class="layui-btn layui-btn-xs" lay-event="message"><i class="layui-icon layui-icon-addition layui-font-12"></i></a>
+	<a href="https://wa.me/591{{ String(d.phone).replace(/\D/g, '') }}" 
+       target="_blank" 
+       class="layui-btn layui-btn-xs btn-wa-table"
+       title="WhatsApp">
+       <svg width="14" height="14" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-top: -2px; vertical-align: middle;">
+         <path d="M15.255 3.713a8 8 0 0 0-5.684-2.36c-4.433 0-8.043 3.603-8.043 8.036 0 1.394.364 2.771 1.045 3.974l-1.164 4.26 4.354-1.14a8.06 8.06 0 0 0 3.8.957c4.434 0 8.044-3.61 8.044-8.043 0-2.145-.84-4.172-2.352-5.692zM4.283 13.11c-.76-.863-1.18-2.312-1.18-3.72a6.467 6.467 0 0 1 6.46-6.46 6.42 6.42 0 0 1 4.568 1.891 6.42 6.42 0 0 1 1.892 4.568 6.467 6.467 0 0 1-6.46 6.46c-1.258 0-2.596-.404-3.562-1.06l-2.343.609z" fill="#fff"></path>
+         <path d="M11.748 10.434c.182.064 1.148.539 1.346.641.198.103.333.15.38.23.048.08.048.475-.119.934s-.95.879-1.33.934c-.34.048-.768.072-1.242-.079a12 12 0 0 1-1.125-.412c-1.979-.854-3.27-2.842-3.364-2.976-.103-.143-.8-1.069-.8-2.035s.507-1.448.689-1.646a.72.72 0 0 1 .522-.246h.38c.12 0 .285-.047.444.34.166.396.562 1.362.61 1.465a.38.38 0 0 1 .015.349c-.063.134-.095.213-.198.324a8 8 0 0 1-.293.348c-.095.095-.198.206-.087.404.119.198.507.84 1.093 1.362.752.673 1.385.879 1.583.974s.309.079.428-.048c.118-.135.49-.578.625-.776s.261-.166.443-.095z" fill="#fff"></path>
+       </svg>
+    </a>
+	<a class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">
+      <i class="layui-icon layui-icon-delete"></i>
+    </a>
   </div>
+<% } %>
 </script>  
 
 <%- include('partials/footer') %>
@@ -144,7 +157,7 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
       {field:'created_at', title:'Registro', width:80, templet: function(d){
         return d.created_at ? dayjs(d.created_at).format('DD/MM/YY') : '-';
       }},
-	  {fixed: 'right', title:'Acciones', width: 150, minWidth: 125, templet: '#UserAction', sort:'true'}
+	  {fixed: 'right', title:'Acciones', width: 150, minWidth: 125, templet: '#UserAction'}
     ]],
     page: true,
 	done: function(res, curr, count) {
@@ -300,13 +313,16 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
   
   // 3. Add User Modal
   function showAddModal(){
-    layer.open({
-      type: 2,
-      title: 'Register New User',
-      area: ['500px', '420px'],  
-      content: '/templ/add-user.html'
-    });
-  }
+  var width = window.innerWidth < 500 ? '95%' : '500px';
+  var height = window.innerWidth < 500 ? '55%' : '420px';
+  
+  layer.open({
+    type: 2,
+    title: 'Registro',
+    area: [width, height],  
+    content: '/templ/add-user.html'
+  });
+}
   
   
   table.on('tool(mainFilter)', function(obj){
@@ -358,10 +374,11 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
 }
   
   function showVerifyModal(userData) {
+  var isMobile = window.innerWidth < 768;
     layer.open({
         type: 2,
         title: 'Validación de Identidad: ' + (userData.name || userData.phone),
-        area: ['420px', '580px'],
+        area: isMobile ? ['95%', '82%'] : ['420px', '580px'],
         shadeClose: true,
         anim: 5, // Animación de entrada suave
         content: '/templ/verify-user.html',

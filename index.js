@@ -44,39 +44,32 @@ app.set('views', path.join(__dirname, 'views'));
 
 const checkAuth = async (req, res, next) => {
     const sessionToken = req.cookies.__session || '';
-    
     if (!sessionToken) return res.redirect('/login');
 
     try {
-        // 1. Validar el token con Supabase Auth
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(sessionToken);
-        
         if (authError || !user) throw new Error("Sesión inválida");
 
-        // 2. NUEVO: Verificar si el UUID del usuario existe en la tabla 'admins'
+        // Traemos el ID y el ROLE de la tabla admins
         const { data: adminData, error: dbError } = await supabaseAdmin
-            .from('admins') // El nombre de la tabla que creaste
-            .select('id')
+            .from('admins')
+            .select('id, role')
             .eq('id', user.id)
-            .maybeSingle(); // Retorna null si no lo encuentra en lugar de error
+            .maybeSingle();
 
         if (dbError) throw dbError;
 
-        // Si no se encontró en la tabla admins, denegar acceso
         if (!adminData) {
-            console.warn(`Intento de acceso denegado para: ${user.email}`);
-            // Limpiamos la cookie para que no intente entrar de nuevo automáticamente
             res.clearCookie('__session');
             return res.status(403).render('login', { 
-                error: 'No tienes permisos de administrador para acceder a este panel.' 
+                error: 'No tienes permisos de administrador.' 
             });
         }
 
-        // Si todo está bien, guardamos el usuario y continuamos
-        req.user = user; 
+        // Guardamos tanto el usuario de Auth como su rol de la tabla admins
+        req.user = { ...user, role: adminData.role }; 
         next();
     } catch (error) {
-        console.error("Error de autenticación/autorización:", error.message);
         res.clearCookie('__session');
         res.redirect('/login');
     }

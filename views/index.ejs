@@ -1,5 +1,5 @@
 ﻿<%- include('partials/head', { title: 'Members Core' }) %>
-<body class="layui-padding-3">
+<body>
 <audio id="notifSound" src="https://res.cloudinary.com/dljymqntm/video/upload/v1771778458/alternate-notification-sound_q3lh6v.mp3" preload="auto"></audio>
 
   <div class="layui-container" style="margin-top:20px;">
@@ -47,10 +47,17 @@
 
 <script type="text/html" id="tableToolbar">
   <div class="layui-btn-container">
-    <button class="layui-btn layui-btn-sm" lay-event="add">
-      <i class="layui-icon layui-icon-add-1"></i> Agregar
-    </button>
-	<% if (user.role === 'admin') { %>
+    <% if (user.role !== 'verifier') { %>
+      <button class="layui-btn layui-btn-sm" lay-event="add">
+        <i class="layui-icon layui-icon-user"></i> Agregar
+      </button>
+    <% } %>
+	<% if (user.role === 'super_admin' || user.role === 'admin') { %>
+      <button class="layui-btn layui-btn-sm" lay-event="addAdmin">
+        <i class="layui-icon layui-icon-util"></i> Administradores
+      </button>
+    <% } %>
+	<% if (user.role === 'super_admin') { %>
 	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
       <i class="layui-icon layui-icon-list"></i> Publicaciones
     </button>
@@ -73,7 +80,17 @@
   {{# if(d.is_verified == 2){ }}
     <span class="layui-badge layui-bg-green" style="cursor:pointer">Verificado</span>
   {{# } else if(d.is_verified == 1){ }}
-    <span class="layui-badge layui-bg-blue" style="cursor:pointer">En Espera</span>
+    
+    <div style="position: relative; display: inline-block; padding: 5px 0;">
+      
+      <span style="position: absolute; top: -4px; right: -8px; font-size: 10px; color: #000; font-weight: bold; background: yellow; padding:3px 5px; line-height: 1; border-radius: 3px; white-space: nowrap; z-index: 10;">
+		{{ d.verifier_name ? d.verifier_name.split(' ')[0] + ' ' + d.verifier_name.split(' ')[1].charAt(0) + '.' : 'SIN ASIGNAR' }}
+	  </span>
+
+      <span class="layui-badge layui-bg-blue">En Espera</span>
+      
+    </div>
+
   {{# } else if(d.is_verified == 3){ }}
     <span class="layui-badge layui-bg-red" style="cursor:pointer">Rechazado</span>
   {{# } else { }}
@@ -104,7 +121,7 @@
 </script>
 
 <script type="text/html" id="UserAction">
-<% if (user.role === 'admin') { %>
+<% if (user.role === 'super_admin') { %>
   <div class="layui-clear-space">
     <a class="layui-btn layui-btn-xs" lay-event="edit">Editar</a>
     <a class="layui-btn layui-btn-xs" lay-event="message"><i class="layui-icon layui-icon-addition layui-font-12"></i></a>
@@ -157,7 +174,13 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
       {field:'created_at', title:'Registro', width:80, templet: function(d){
         return d.created_at ? dayjs(d.created_at).format('DD/MM/YY') : '-';
       }},
-	  {fixed: 'right', title:'Acciones', width: 150, minWidth: 125, templet: '#UserAction'}
+	  {
+        fixed: '<%= user.role %>' === 'super_admin' ? 'right' : false, 
+        title:'Acciones', 
+        width: 150, 
+        minWidth: 125, 
+        templet: '#UserAction'
+      }
     ]],
     page: true,
 	done: function(res, curr, count) {
@@ -167,45 +190,60 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
   });
   
   const channel = _supabase
-    .channel('members-changes')
-    .on(
-      'postgres_changes',
-      { 
-        event: '*', // Escucha INSERT, UPDATE y DELETE
-        schema: 'public', 
-        table: 'members' 
-      },
-      (payload) => {
-        console.log('Cambio detectado en tiempo real:', payload);
-        
-        // 1. Notificación personalizada según el caso
-        if (payload.eventType === 'UPDATE' && payload.new.is_verified === 1) {
-		
-		var sound = document.getElementById('notifSound');
-        if (sound) {
-          sound.currentTime = 0; // Reinicia el sonido si ya estaba sonando
-          sound.play().catch(function(error) {
-            console.log("El audio sonará después de interactuar con la página.");
-          });
-        }
-            layer.msg('¡Nueva verificación pendiente!', { icon: 0});
-        }
+  .channel('members-changes')
+  .on(
+    'postgres_changes',
+    { 
+      event: '*', 
+      schema: 'public', 
+      table: 'members' 
+    },
+    (payload) => {
+      console.log('Cambio detectado:', payload);
+      const { eventType, new: newData } = payload;
 
-        // 2. RECARGA SIEMPRE
-        // Esto hará que la tabla pida los datos de nuevo al servidor 
-        // y aparezca la nueva fila del INSERT inmediatamente.
+      // 1. SONIDO (Sin filtros, cada vez que entre o se actualice a espera)
+      if (eventType === 'INSERT' || (eventType === 'UPDATE' && newData.is_verified === 1)) {
+        const sound = document.getElementById('notifSound');
+        if (sound) {
+          sound.cloneNode().play().catch(() => {});
+        }
+      }
+
+      // 2. ACTUALIZACIÓN QUIRÚRGICA (Solo la fila afectada)
+      if (eventType === 'UPDATE') {
+        // Buscamos la fila en la caché interna de Layui usando el ID de la tabla
+        const cache = table.cache['mainTableReload'];
+        const rowIndex = cache.findIndex(item => item.id === newData.id);
+
+        if (rowIndex > -1) {
+          // 1. Actualizamos el objeto en el caché de memoria
+          cache[rowIndex] = { ...cache[rowIndex], ...newData };
+
+          // 2. Sincronizamos el HTML de la fila específica
+          // Usamos la propiedad 'obj' del render de la tabla para actualizar la vista
+          table.renderData('mainTableReload'); 
+          
+          console.log(`Fila ${newData.id} sincronizada.`);
+        }
+      } 
+      
+      // 3. RECARGA COMPLETA (Solo en caso de nuevos registros o eliminaciones)
+      else if (eventType === 'INSERT' || eventType === 'DELETE') {
         table.reloadData('mainTableReload', {
           scrollPos: 'fixed'
         });
       }
-    )
-    .subscribe((status) => {
-        console.log("Estado suscripción:", status);
-    });
+    }
+  )
+  .subscribe();
 
   // 2. Toolbar Events
   table.on('toolbar(mainFilter)', function(obj){
     if(obj.event === 'add') showAddModal();
+	if(obj.event === 'addAdmin') {
+      window.location.href = '/admins';
+    }
 	if(obj.event === 'goPosts') {
       window.location.href = '/posts';
     }
@@ -323,13 +361,21 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
     content: '/templ/add-user.html'
   });
 }
-  
+
   
   table.on('tool(mainFilter)', function(obj){
     var data = obj.data;
+	const userRole = '<%= user.role %>';
     if(obj.event === 'message') showAddPointsModal(obj);
     if(obj.event === 'edit') showEditModal(data);
-	if(obj.event === 'changeStatus') showVerifyModal(data);
+	if(obj.event === 'changeStatus') {
+        // Solo admin o verifier pueden abrir el modal
+        if (userRole === 'super_admin' || userRole === 'verifier' || userRole === 'admin') {
+            showVerifyModal(data);
+        } else {
+            layer.msg('No tienes permisos para realizar verificaciones', { icon: 2 });
+        }
+    }
 	if(obj.event === 'delete') confirmDeleteUser(obj);
   });
   

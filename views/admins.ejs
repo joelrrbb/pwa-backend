@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestión de administradores</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+</head>
+<body>
+
+<div class="layui-container" style="margin-top:20px;">
+  <h2>Administradores</h2>
+  <table id="admins-table" lay-filter="admins-table"></table>
+</div>
+
+<script type="text/html" id="toolbarDemo">
+  <div class="layui-btn-container">
+    <button class="layui-btn layui-btn-sm" lay-event="goHome">
+      <i class="layui-icon layui-icon-home layui-font-12"></i> Inicio
+    </button>
+    <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addAdmin">
+      <i class="layui-icon layui-icon-user"></i> Agregar Administrador
+    </button>
+    <% if (user.role === 'super_admin') { %>
+    <button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
+      <i class="layui-icon layui-icon-list"></i> Publicaciones
+    </button>
+    <button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
+      <i class="layui-icon layui-icon-auz"></i> Supervisores
+    </button>
+    <% } %>
+    <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
+      <i class="layui-icon layui-icon-logout"></i> Salir
+    </button>
+  </div>
+</script>
+
+<script type="text/html" id="toolShopper">
+  <div class="layui-clear-space">
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">Eliminar</a>
+  </div>
+</script>  
+
+<script type="text/html" id="enabledTpl">
+  <input type="checkbox" 
+         lay-skin="switch" 
+         lay-text="Activo|Inactivo"
+         lay-filter="enabledSwitch"
+         data-id="{{d.id}}" 
+         {{ (d.is_enabled === true || d.is_enabled === 1) ? 'checked' : '' }}>
+</script>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
+<script>
+layui.use(['table', 'form', 'layer'], function(){
+  const table = layui.table;
+  const form = layui.form;
+  const layer = layui.layer;
+
+  table.render({
+    elem: '#admins-table',
+    url: '/api/get-admins',
+    page: true,
+    toolbar: '#toolbarDemo',
+    height: 'full-180',
+    limits: [10, 20, 30],
+    limit: 10,
+    parseData: function(res){
+      return {
+        "code": res.code,
+        "msg": res.msg,
+        "count": res.count,
+        "data": res.data
+      };
+    },
+    cols: [[
+      {type: 'checkbox', fixed: 'left'},
+      {field:'id', title:'ID Miembro', hide: true},
+      {field:'name', title:'Nombre', minWidth:200},
+      {field:'email', title:'Correo Electrónico', width:220},
+      {
+        field: 'role', 
+        title: 'Rol', 
+        width: 150, 
+        align: 'center', 
+        templet: function(d) {
+          let color = '';
+          let displayName = '';
+          if (d.role === 'manager') {
+            color = 'layui-bg-green'; 
+            displayName = 'SOCIALIZADORA';
+          } else if (d.role === 'verifier') {
+            color = 'layui-bg-blue';
+            displayName = 'VERIFICADOR';
+          } else {
+            color = 'layui-bg-gray';
+            displayName = d.role ? d.role.toUpperCase() : 'SIN ROL';
+          }
+          return `<span class="layui-badge ${color}">${displayName}</span>`;
+        }
+      },
+      {field:'is_enabled', title:'Estado', width:110, align:'center', templet: '#enabledTpl'},
+      {field:'created_at', title:'Creado', width:160, align:'center', templet: d => dayjs(d.created_at).format('YYYY-MM-DD HH:mm')},
+      {fixed:'right', title:'Acciones', width:100, align:'center', templet:'#toolShopper'}
+    ]],
+  });
+
+  // Evento del Switch is_enabled corregido
+  form.on('switch(enabledSwitch)', function(data){
+    var id = data.elem.getAttribute('data-id');
+    var isChecked = data.elem.checked;
+
+    axios.post('/api/update-admin-status', { id: id, is_enabled: isChecked })
+      .then(res => {
+        layer.msg('Estado actualizado', { icon: 1, time: 1000 });
+      })
+      .catch(err => {
+        layer.msg('Error al actualizar', { icon: 2 });
+        data.elem.checked = !isChecked;
+        form.render('checkbox');
+      });
+  });
+
+  // Toolbar
+  table.on('toolbar(admins-table)', function(obj){
+    switch(obj.event){
+      case 'goHome':
+        window.location.href = '/';
+        break;
+      case 'addAdmin':
+		showAddAdminModal();
+		break;
+      case 'goPosts':
+        window.location.href = '/posts';
+        break;
+      case 'goManagers':
+        window.location.href = '/managers';
+        break;
+      case 'logout':
+        window.location.href = '/logout';
+        break;
+    }
+  });
+  
+ 
+  // Eventos de Fila (Eliminar Admin)
+  table.on('tool(admins-table)', function(obj){
+    if(obj.event === 'delete'){
+      layer.confirm('¿Deseas quitar los permisos a este administrador?', {icon: 3, title:'Confirmar'}, function(index){
+        axios.post('/api/delete-admin', { id: obj.data.id })
+          .then(res => {
+            layer.msg('Permisos revocados', {icon: 1});
+            obj.del();
+            layer.close(index);
+          })
+          .catch(err => {
+            layer.msg('Error al eliminar', {icon: 2});
+          });
+      });
+    }
+  });
+  
+  function showAddAdminModal() {
+  // Si es pantalla pequeña, casi todo el ancho y alto; si no, tamaño fijo
+  var width = window.innerWidth < 500 ? '95%' : '600px';
+  var height = window.innerWidth < 500 ? '50%' : '350px';
+
+  layer.open({
+    type: 2,
+    title: 'Promover a Administrador',
+    area: [width, height],
+    content: '/templ/add-admin.html',
+    shadeClose: true, // Permite cerrar haciendo clic fuera (útil en móvil)
+    end: function() {
+      table.reload('admins-table');
+    }
+  });
+}
+});
+</script>

@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import { generateSixDigitCode } from './utils/codeGenerator.js';
 import { startWhatsApp } from './whatsapp.js';
 import { createClient } from '@supabase/supabase-js';
+import { getNextVerifier } from './utils/verifierService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,7 +166,7 @@ app.post('/api/add-user', async (req, res) => {
     if (!phone) {
       return res.status(400).json({ code: 1, msg: 'El número de teléfono es obligatorio' });
     }
-
+	const assignedVerifier = getNextVerifier();
     const email = `${phone}@app.com`;
     const access_code = incomingCode || generateSixDigitCode();
 
@@ -234,6 +235,7 @@ if (identity_card) {
         manager_phone: manager_phone || null,
         member_type: member_type,
         tier: tier || null,
+		verifier_name: assignedVerifier,
 		id_slot: id_slot
       })
       .select()
@@ -297,11 +299,10 @@ app.post('/api/delete-user', async (req, res) => {
   }
 });
 
-
 app.post('/api/verify-user', async (req, res) => {
-  // 1. Extraemos los nuevos campos del body
   const { 
     uid, 
+    referrer_id, 
     name, 
     is_verified, 
     identity_card, 
@@ -313,8 +314,17 @@ app.post('/api/verify-user', async (req, res) => {
   if (!uid) return res.status(400).send({ msg: 'UID requerido' });
 
   try {
-    // 2. Incluimos los campos en el objeto de actualización
-    const { data, error } = await supabaseAdmin
+    // 1. Obtenemos el estado actual, el tipo de miembro y el referrer_id real de la DB
+    const { data: currentMember, error: fetchError } = await supabaseAdmin
+      .from('members')
+      .select('is_verified, member_type, referrer_id')
+      .eq('id', uid)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // 2. Actualizamos los datos del usuario (el referido)
+    const { error: updateError } = await supabaseAdmin
       .from('members')
       .update({ 
         name, 
@@ -324,15 +334,142 @@ app.post('/api/verify-user', async (req, res) => {
         voting_place,
         voting_table 
       })
-      .eq('id', uid)
-      .select();
+      .eq('id', uid);
 
-    if (error) throw error;
+    if (updateError) throw updateError;
 
-    res.status(200).send({ msg: 'Usuario actualizado', data });
+    // 3. LÓGICA DE PUNTOS PARA EL REFERENTE
+    // Condiciones: 
+    // - El nuevo estado es "2" (Verificado)
+    // - El estado anterior NO era "2" (para no duplicar puntos)
+    // - El usuario es member_type 1
+    // - Existe un referrer_id
+    const isNowVerified = parseInt(is_verified) === 2;
+    const wasNotVerified = currentMember.is_verified !== 2;
+    const isCorrectMemberType = parseInt(currentMember.member_type) === 1;
+    const finalReferrerId = referrer_id || currentMember.referrer_id;
+
+    if (isNowVerified && wasNotVerified && isCorrectMemberType && finalReferrerId) {
+      
+      // Buscamos los puntos del referente para sumar
+      const { data: refData } = await supabaseAdmin
+        .from('members')
+        .select('points')
+        .eq('id', finalReferrerId)
+        .single();
+
+      if (refData) {
+        await supabaseAdmin
+          .from('members')
+          .update({ points: (refData.points || 0) + 50 })
+          .eq('id', finalReferrerId);
+          
+        console.log(`Puntos otorgados al referente ${finalReferrerId} porque el miembro tipo 1 (${uid}) fue verificado.`);
+      }
+    }
+
+    res.status(200).send({ msg: 'Usuario actualizado correctamente' });
   } catch (error) {
     console.error("Error en verify-user:", error);
     res.status(500).send({ msg: error.message });
+  }
+});
+
+app.get('/api/get-admins', checkAuth, async (req, res) => {
+  try {
+    // 1. Capturar parámetros de paginación de Layui
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // 2. Calcular el rango (Desde - Hasta) para Supabase
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    // 3. Consultar Supabase en la tabla 'admins'
+    const { data, error, count } = await supabaseAdmin
+      .from('admins')
+      .select('*', { count: 'exact' })
+	  .not('role', 'in', '("admin","super_admin")')
+	  .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      console.error('Error Supabase Admnins:', error.message);
+      return res.status(400).json({ code: 1, msg: error.message });
+    }
+
+    // 4. Responder con el formato exacto que espera Layui
+    res.json({
+      code: 0,
+      msg: "",
+      count: count || 0, // Total de registros en la DB
+      data: data || []   // Los registros de la página actual
+    });
+
+  } catch (error) {
+    console.error('Error crítico obteniendo admins:', error);
+    res.status(500).json({ 
+      code: 1, 
+      msg: "Error interno del servidor", 
+      data: [] 
+    });
+  }
+});
+
+app.post('/api/update-admin-status', async (req, res) => {
+  const { id, is_enabled } = req.body;
+
+  const { error } = await supabaseAdmin
+    .from('admins')
+    .update({ is_enabled })
+    .eq('id', id);
+
+  if (error) return res.status(400).json({ msg: error.message });
+  res.json({ success: true });
+});
+
+app.post('/api/add-to-admins', checkAuth, async (req, res) => {
+  // Recibimos exactamente lo que envía tu console.log(payload)
+  const { id, role, name, email } = req.body;
+
+  if (!id || !role || !name) {
+    return res.status(400).json({ msg: 'Faltan datos obligatorios: ID, Rol o Nombre' });
+  }
+
+  try {
+    // 1. Verificamos duplicados
+    const { data: existingAdmin } = await supabaseAdmin
+      .from('admins')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingAdmin) {
+      return res.status(400).json({ msg: `El usuario ${name} ya es administrador.` });
+    }
+
+    // 2. Insertamos sin access_code
+    const { error: insertError } = await supabaseAdmin
+      .from('admins')
+      .insert([
+        { 
+          id: id,            // UUID del miembro
+          name: name,        // Nombre limpio (name_clean)
+          email: email,      // Email capturado o 'Sin correo'
+          role: role,        // 'socializadora' o 'verificador'
+        }
+      ]);
+
+    if (insertError) {
+      console.error('Error al insertar:', insertError);
+      return res.status(400).json({ msg: 'Error en base de datos: ' + insertError.message });
+    }
+
+    res.json({ success: true, msg: 'Admin agregado con éxito' });
+
+  } catch (error) {
+    console.error('Error crítico:', error);
+    res.status(500).json({ msg: 'Error interno del servidor' });
   }
 });
 
@@ -629,6 +766,10 @@ app.get('/events', checkAuth, (req, res) => {
 app.get('/managers', checkAuth, (req, res) => {
     res.render('managers', { user: req.user });
 });
+
+app.get('/admins', checkAuth, (req, res) => {
+    res.render('admins', { user: req.user });
+})
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);

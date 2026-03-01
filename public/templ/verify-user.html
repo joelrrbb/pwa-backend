@@ -34,6 +34,7 @@
 <body>
   <div class="layui-form" id="verifyForm" lay-filter="verifyForm">
     <input type="hidden" name="uid">
+	<input type="hidden" name="referrer_id">
 
     <div class="data-card">
       <div class="label-text">Nombre Completo</div>
@@ -149,6 +150,7 @@ layui.use(['form', 'layer'], function(){
 function initVerify(data) {
   layui.form.val('verifyForm', {
     "uid": data.uid || data.id,
+	"referrer_id": data.referrer_id || '',
     "name": data.name || '',
     "identity_card": data.identity_card || '',
     "birth_date": data.birth_date || data.fecha_nacimiento || '',

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/layui/2.9.0/css/layui.css">
+</head>
+<body class="layui-padding-3">
+
+<form class="layui-form layui-padding-3">
+  <div class="layui-form-item">
+    <label class="layui-form-label">Miembro</label>
+    <div class="layui-input-block">
+      <div id="member-select-admin"></div>
+    </div>
+  </div>
+
+  <div class="layui-form-item">
+    <label class="layui-form-label">Rol</label>
+    <div class="layui-input-block">
+      <select name="role_text" lay-verify="required">
+        <option value="">Seleccionar rol</option>
+        <option value="manager">Socializadora</option>
+        <option value="verifier">Verificador</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="layui-form-item">
+    <div class="layui-input-block">
+      <button class="layui-btn layui-bg-blue" lay-submit lay-filter="addAdminAction">Continuar</button>
+    </div>
+  </div>
+</form>
+
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/js/layui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/xm-select/xm-select.js"></script>
+
+<script>
+layui.use(['form', 'layer'], function () {
+  var form = layui.form;
+  var layer = layui.layer;
+
+  // Inicializar xmSelect
+  var adminMemberSelect = xmSelect.render({
+    el: '#member-select-admin',
+    name: 'member_id',
+    language: 'en',
+    radio: true,
+    clickClose: true,
+    filterable: true,
+    remoteSearch: true,
+    tips: 'Nombre o celular...',
+    empty: 'No se encontraron resultados',
+    remoteMethod: function(val, cb, show){
+      if(!val || val.length < 2) return cb([]);
+
+      var isNumber = !isNaN(val);
+      var params = isNumber ? { phone: val } : { name: val };
+
+      axios.get('/api/get-data', { params: params })
+        .then(function(res){
+          var results = res.data.data.map(function(item){
+            return {
+              name: item.name + " - " + item.phone, 
+              value: item.id,
+              email: item.email || 'Sin correo', // Atributo extra
+              name_clean: item.name              // Atributo extra para el nombre sin celular
+            }
+          });
+          cb(results);
+        })
+        .catch(function(err){
+          console.error("Error en búsqueda:", err);
+          cb([]);
+        });
+    }
+  });
+
+  // Escuchar el submit
+  form.on('submit(addAdminAction)', function(data){
+    var selected = adminMemberSelect.getValue();
+    
+    if(selected.length === 0){
+      layer.msg('Debe seleccionar un miembro', {icon: 5});
+      return false;
+    }
+
+    // Construcción del Payload corregida
+    var payload = {
+      id: selected[0].value,         // ID del miembro seleccionado
+      role: data.field.role_text,    // Texto directo: "socializadora" o "verificador"
+      name: selected[0].name_clean,  // Nombre sin el teléfono
+      email: selected[0].email       // Email obtenido de la búsqueda
+    };
+	
+	console.log(payload);
+
+    var loading = layer.load(2);
+
+    axios.post('/api/add-to-admins', payload)
+      .then(function(res){
+        layer.close(loading);
+        layer.msg('Admin agregado correctamente', {icon: 1});
+        setTimeout(function(){
+          parent.layer.closeAll();
+        }, 1000);
+      })
+      .catch(function(err){
+        layer.close(loading);
+        var msg = err.response?.data?.msg || 'Error al guardar';
+        layer.msg(msg, {icon: 2});
+      });
+
+    return false;
+  });
+});
+</script>
+</body>
+</html>

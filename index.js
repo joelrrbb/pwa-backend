@@ -657,7 +657,7 @@ app.post('/api/manager-update-hidden', checkAuth, async (req, res) => {
 // 3. Agregar nuevo manager (Para el modal add-manager.html)
 app.post('/api/manager-add', checkAuth, async (req, res) => {
   try {
-    const { name, phone, team_size } = req.body;
+    const { name, phone, team_size, team_assign } = req.body;
 
     const { data, error } = await supabaseAdmin
       .from('social_media_manager')
@@ -665,6 +665,7 @@ app.post('/api/manager-add', checkAuth, async (req, res) => {
         name,
         phone,
         team_size: parseInt(team_size) || 0,
+        team_assign: parseInt(team_assign) || 50,
         is_hidden: false
       }]);
 

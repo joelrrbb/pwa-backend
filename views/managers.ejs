@@ -20,8 +20,12 @@
       <i class="layui-icon layui-icon-home layui-font-12"></i> Inicio
     </button>
 	<button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addManager">
-      <i class="layui-icon layui-icon-add-1 layui-font-12"></i> Agregar
+      <i class="layui-icon layui-icon-user"></i> Agregar Supervisor
     </button>
+	<button class="layui-btn layui-btn-sm layui-bg-yellow" lay-event="addAdmin">
+        <i class="layui-icon layui-icon-util"></i> Administradores
+    </button>
+	<% if (user.role === 'super_admin') { %>
 	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
       <i class="layui-icon layui-icon-list"></i> Publicaciones
     </button>
@@ -29,7 +33,7 @@
 	<button class="layui-btn layui-btn-sm layui-bg-green" lay-event="goEvents">
       <i class="layui-icon layui-icon-date"></i> Eventos
     </button>
-	
+	 <% } %>
 	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
         <i class="layui-icon layui-icon-logout"></i> Salir
       </button>
@@ -87,7 +91,16 @@ layui.use(['table', 'form'], function(){
       {type: 'checkbox', fixed: 'left'},
       { field:'name', title:'Nombre', width:150, align:'center' },
 	  {field:'phone', title:'Teléfono', minWidth:100, align:'center'},
-	  { field:'total_miembros', title:'Designados', width:120, align:'center' },
+	  { field:'team_assign', title:'Designados', width:120, align:'center' },
+	  {field:'total_miembros', title:'Total', width:100, align:'center', 
+    templet: function(d){
+      // Si el total llegó al límite, lo pintamos en rojo y negrita
+      if(d.total_miembros >= d.team_assign){
+        return '<span style="color: #FF5722; font-weight: bold;">' + d.total_miembros + ' (Lleno)</span>';
+      }
+      return d.total_miembros;
+    }
+  },
 	  {field:'is_hidden', title:'Ocultar', width:80, templet: '#hiddenTpl'},
       { field:'created_at', title:'Creado', width:120, align:'center', templet: d => dayjs(d.created_at).format('YYYY-MM-DD HH:mm') },
       { fixed:'right', title:'Acciones', templet:'#toolShopper' }
@@ -116,16 +129,15 @@ layui.use(['table', 'form'], function(){
   if(obj.event === 'goHome'){
     window.location.href = '/';
   } else if(obj.event === 'addManager'){
-    layer.open({
-      type: 2, // iframe
-      title: 'Agregar clasificador',
-      area: ['700px', '300px'],
-      content: '/templ/add-manager.html'
-    });
+    showAddModal();
   }
   
   if(obj.event === 'goManagers') {
       window.location.href = '/managers';
+    }
+	
+	if(obj.event === 'addAdmin') {
+      window.location.href = '/admins';
     }
 	
 	if(obj.event === 'goPosts') {
@@ -143,6 +155,21 @@ layui.use(['table', 'form'], function(){
         window.location.href = '/logout';
       });
     }
+	
+	function showAddModal() {
+  // Definimos las dimensiones basadas en el ancho de pantalla
+  var isMobile = window.innerWidth < 500;
+  var width = isMobile ? '95%' : '500px';
+  var height = isMobile ? '50%' : '420px';
+
+  layer.open({
+    type: 2,
+    title: 'Agregar Supervisor',
+    area: [width, height],
+    content: '/templ/add-manager.html',
+    shadeClose: true
+  });
+}
 });
  
 });

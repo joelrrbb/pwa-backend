@@ -53,9 +53,13 @@
       </button>
     <% } %>
 	<% if (user.role === 'super_admin' || user.role === 'admin') { %>
-      <button class="layui-btn layui-btn-sm" lay-event="addAdmin">
+      <button class="layui-btn layui-btn-sm layui-bg-yellow" lay-event="addAdmin">
         <i class="layui-icon layui-icon-util"></i> Administradores
       </button>
+	  
+	  <button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
+      <i class="layui-icon layui-icon-auz"></i> Supervisores
+    </button>
     <% } %>
 	<% if (user.role === 'super_admin') { %>
 	<button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
@@ -65,10 +69,7 @@
 	<button class="layui-btn layui-btn-sm layui-bg-green" lay-event="goEvents">
       <i class="layui-icon layui-icon-date"></i> Eventos
     </button>
-	
-	<button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
-      <i class="layui-icon layui-icon-auz"></i> Supervisores
-    </button>
+
 	<% } %>
 	<button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">
         <i class="layui-icon layui-icon-logout"></i> Salir
@@ -162,7 +163,7 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
       {field:'id', title:'ID', hide: true},
       {field:'name', title:'Nombre', minWidth:180},
       {field:'phone', title:'Teléfono', width:80},
-	  {field:'identity_card', title:'C.I.', width:80},
+	  {field:'identity_card', title:'C.I.', width:80, align: 'center'},
 	  {field:'member_type', title:'Tipo', width:95, align:'center', templet: '#memberTpl', event: 'changeType', style:'cursor: pointer;'},
       {field:'access_code', title:'Code', width:70, align:'center'},
       {field:'points', title:'Puntos', width:70, align:'center'},

@@ -23,6 +23,7 @@
              oninput="this.value=this.value.replace(/[^0-9]/g,'')"
              required
              lay-verify="required|number"
+			 lay-reqtext="El número de teléfono es obligatorio"
              placeholder="Ej. 76543210"
              class="layui-input">
     </div>
@@ -101,21 +102,32 @@ layui.use(['form', 'layer'], function () {
   // 2. Cargar datos desde tu API
   axios.get('/api/managers-active')
     .then(res => {
-      if (res.data.code === 0) {
-        // Transformar los datos para el formato de XM-SELECT
-        const mappedData = res.data.data.map(item => ({
+      // Verificamos que existan datos
+      if (res.data.code === 0 && res.data.data && res.data.data.length > 0) {
+        
+        var list = res.data.data;
+        // Generamos el índice al azar
+        var randomIndex = Math.floor(Math.random() * list.length);
+
+        const mappedData = list.map((item, index) => ({
           name: item.name || 'Sin nombre', 
-          value: item.phone, // Lo que se enviará (teléfono)
-          selected: false
+          value: item.phone,
+          // Se pre-selecciona uno al azar
+          selected: index === randomIndex 
         }));
         
-        // Actualizar el componente con los datos reales
         managerSelect.update({
           data: mappedData
         });
+      } else {
+        // Si no hay supervisores, el componente queda vacío pero funcional
+        console.log('No se encontraron supervisores activos.');
       }
     })
-    .catch(err => console.error('Error cargando managers', err));
+    .catch(err => {
+      // Si falla la API, el formulario sigue funcionando vacío
+      console.error('Error cargando managers, se permitirá registro vacío', err);
+    });
 
   form.on('submit(saveUser)', function (data) {
     var loading = layer.load(2);

@@ -21,12 +21,12 @@
     <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="addAdmin">
       <i class="layui-icon layui-icon-user"></i> Agregar Administrador
     </button>
+	<button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
+      <i class="layui-icon layui-icon-auz"></i> Supervisores
+    </button>
     <% if (user.role === 'super_admin') { %>
     <button class="layui-btn layui-btn-sm layui-bg-blue" lay-event="goPosts">
       <i class="layui-icon layui-icon-list"></i> Publicaciones
-    </button>
-    <button class="layui-btn layui-btn-sm layui-bg-purple" lay-event="goManagers">
-      <i class="layui-icon layui-icon-auz"></i> Supervisores
     </button>
     <% } %>
     <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="logout" style="color: #ff5722; border-color: #ff5722;">

@@ -4,37 +4,34 @@
   <meta charset="UTF-8">
   <title>Agregar Supervisor</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/css/layui.css">
+  <script src="https://cdn.jsdelivr.net/gh/joelrrbb/cdn-assets@main/xm-select/xm-select.js"></script>
 </head>
 <body>
 <div class="layui-container" style="padding: 20px;">
   <form class="layui-form" id="addManagerForm">
     
     <div class="layui-form-item">
-      <label class="layui-form-label">Nombre</label>
+      <label class="layui-form-label">Miembro</label>
       <div class="layui-input-block">
-        <input type="text" name="name" required lay-verify="required" placeholder="Nombre completo del supervisor" class="layui-input">
-      </div>
-    </div>
-
-    <div class="layui-form-item">
-      <label class="layui-form-label">Teléfono</label>
-      <div class="layui-input-block">
-        <input type="number" name="phone" required lay-verify="required|number" placeholder="Ej: 54911..." class="layui-input">
+        <div id="member-select-admin"></div>
       </div>
     </div>
 
     <div class="layui-form-item">
       <label class="layui-form-label">Equipo</label>
       <div class="layui-input-block">
-        <input type="number" name="team_size" value="0" class="layui-input" placeholder="Cantidad de personas a cargo">
+        <select name="team_assign" lay-verify="required">
+          <option value="">Seleccione capacidad...</option>
+          <option value="50">50 personas</option>
+          <option value="100">100 personas</option>
+          <option value="150">150 personas</option>
+        </select>
       </div>
     </div>
-    
-    <div class="layui-form-item" style="margin-top: 25px;">
-      <div class="layui-input-block">
-        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitAddManager">Guardar Supervisor</button>
-        <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">Cancelar</button>
-      </div>
+
+    <div class="layui-form-item" style="margin-top: 30px; text-align: right;">
+      <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitAddManager">Guardar Supervisor</button>
+      <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">Cancelar</button>
     </div>
   </form>
 </div>
@@ -44,21 +41,67 @@
 
 <script>
 layui.use(['form', 'layer'], function(){
-  var layer = layui.layer;
   var form = layui.form;
-  
-  form.on('submit(submitAddManager)', function(data){
-    // Mostramos un loader para mejorar UX
-    var loadIndex = layer.load(2);
+  var layer = layui.layer;
 
-    // IMPORTANTE: URL corregida para apuntar al endpoint de managers
-    axios.post('/api/manager-add', data.field)
+  // 1. Tu configuración de xm-select
+  var adminMemberSelect = xmSelect.render({
+    el: '#member-select-admin',
+    name: 'member_id',
+    language: 'en',
+    radio: true,
+    clickClose: true,
+    filterable: true,
+    remoteSearch: true,
+    tips: 'Nombre o celular...',
+    empty: 'No se encontraron resultados',
+    remoteMethod: function(val, cb, show){
+      if(!val || val.length < 2) return cb([]);
+      var isNumber = !isNaN(val);
+      var params = isNumber ? { phone: val } : { name: val };
+
+      axios.get('/api/get-data', { params: params })
+        .then(function(res){
+          var results = res.data.data.map(function(item){
+            return {
+              name: item.name + " - " + item.phone, 
+              value: item.id,
+              phone_raw: item.phone, // Guardamos el celular puro para el submit
+              name_clean: item.name   // Guardamos el nombre limpio
+            }
+          });
+          cb(results);
+        })
+        .catch(function(err){
+          cb([]);
+        });
+    }
+  });
+
+  // 2. Manejo del Envío
+  form.on('submit(submitAddManager)', function(data){
+    var selected = adminMemberSelect.getValue();
+    
+    if(selected.length === 0){
+      layer.msg('Debe seleccionar un miembro', {icon: 5});
+      return false;
+    }
+
+    var loadIndex = layer.load(2);
+    
+    // Construimos el objeto final
+    var payload = {
+      name: selected[0].name_clean,
+      phone: selected[0].phone_raw,
+      team_assign: data.field.team_assign
+    };
+
+    axios.post('/api/manager-add', payload)
       .then(res => {
         layer.close(loadIndex);
         if(res.data.code === 0){
-          layer.msg('Supervisor registrado con éxito', {icon: 1, time: 1000}, function(){
+          layer.msg('Registrado con éxito', {icon: 1, time: 1000}, function(){
             var index = parent.layer.getFrameIndex(window.name);
-            // Recargamos la tabla de la ventana padre (asegúrate que el ID coincida)
             parent.layui.table.reload('managers-table'); 
             parent.layer.close(index);
           });
@@ -66,18 +109,17 @@ layui.use(['form', 'layer'], function(){
           layer.msg(res.data.msg || 'Error al guardar', {icon: 2});
         }
       })
-      .catch(err => {
+      .catch(() => {
         layer.close(loadIndex);
-        console.error("Error:", err);
-        layer.msg('Error de red o servidor', {icon: 2});
+        layer.msg('Error de conexión', {icon: 2});
       });
-    return false; // Evita el refresh de la página
+
+    return false;
   });
 
   // Botón Cancelar
   document.getElementById('cancelBtn').onclick = function(){
-    var index = parent.layer.getFrameIndex(window.name);
-    parent.layer.close(index);
+    parent.layer.close(parent.layer.getFrameIndex(window.name));
   };
 });
 </script>

@@ -19,6 +19,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
+
 // --- MIDDLEWARES ---
 // app.use(cors({
   // origin: 'http://localhost:5173', 

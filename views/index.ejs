@@ -122,9 +122,12 @@
 </script>
 
 <script type="text/html" id="UserAction">
+<a class="layui-btn layui-btn-xs layui-bg-orange" lay-event="invite" title="Invitar">
+        <i class="layui-icon layui-icon-user"></i>
+    </a>
 <% if (user.role === 'super_admin') { %>
   <div class="layui-clear-space">
-    <a class="layui-btn layui-btn-xs" lay-event="edit">Editar</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i></a>
     <a class="layui-btn layui-btn-xs" lay-event="message"><i class="layui-icon layui-icon-addition layui-font-12"></i></a>
 	<a href="https://wa.me/591{{ String(d.phone).replace(/\D/g, '') }}" 
        target="_blank" 
@@ -178,8 +181,8 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
 	  {
         fixed: '<%= user.role %>' === 'super_admin' ? 'right' : false, 
         title:'Acciones', 
-        width: 150, 
-        minWidth: 125, 
+        width: 160, 
+        minWidth: 135, 
         templet: '#UserAction'
       }
     ]],
@@ -350,6 +353,35 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
     }
   }
   
+  const inviteTemplates = [
+    "¡Hola! 👋\n\nIngresa aquí para activar tu cuenta:\n{link}\n\nTu código es: *{code}*",
+    "¡Bienvenido!\n\nTú código es: *{code}*\nRegistrate en este enlace:\n{link}",
+    "¡Hola! Estamos sumando fuerzas.\n\nTu código es: *{code}*\nRegistrate en este link:\n{link}"
+];
+
+function sendInviteWhatsApp(userData) {
+    // 1. Elegir un mensaje al azar
+    const randomIndex = Math.floor(Math.random() * inviteTemplates.length);
+    let template = inviteTemplates[randomIndex];
+
+    // 2. Definir los datos
+    const code = userData.access_code || 'SIN_CODIGO';
+    const link = "https://pwa-xsch-client.vercel.app"; 
+    
+    // 3. Rellenar el mensaje
+    const finalMessage = template
+        .replace(/{code}/g, code)
+        .replace(/{link}/g, link);
+            
+    // 4. Limpiar el teléfono y crear la URL
+    // Asegúrate de que userData.phone ya tenga el código de país (ej: 5917xxxxxxx)
+    const phone = String(userData.phone).replace(/\D/g, '');
+    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`;
+    
+    // 5. Abrir directamente en una nueva pestaña
+    window.open(waUrl, '_blank');
+}
+  
   // 3. Add User Modal
   function showAddModal(){
   var width = window.innerWidth < 500 ? '95%' : '500px';
@@ -369,6 +401,7 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
 	const userRole = '<%= user.role %>';
     if(obj.event === 'message') showAddPointsModal(obj);
     if(obj.event === 'edit') showEditModal(data);
+	if(obj.event === 'invite') { sendInviteWhatsApp(data);}
 	if(obj.event === 'changeStatus') {
         // Solo admin o verifier pueden abrir el modal
         if (userRole === 'super_admin' || userRole === 'verifier' || userRole === 'admin') {

@@ -122,11 +122,12 @@
 </script>
 
 <script type="text/html" id="UserAction">
-<a class="layui-btn layui-btn-xs layui-bg-orange" lay-event="invite" title="Invitar">
+
+  <div class="layui-clear-space">
+  <a class="layui-btn layui-btn-xs layui-bg-orange" lay-event="invite" title="Invitar">
         <i class="layui-icon layui-icon-user"></i>
     </a>
-<% if (user.role === 'super_admin') { %>
-  <div class="layui-clear-space">
+	<% if (user.role === 'super_admin') { %>
     <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i></a>
     <a class="layui-btn layui-btn-xs" lay-event="message"><i class="layui-icon layui-icon-addition layui-font-12"></i></a>
 	<a href="https://wa.me/591{{ String(d.phone).replace(/\D/g, '') }}" 
@@ -141,8 +142,8 @@
 	<a class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">
       <i class="layui-icon layui-icon-delete"></i>
     </a>
+	<% } %>
   </div>
-<% } %>
 </script>  
 
 <%- include('partials/footer') %>
@@ -354,9 +355,9 @@ layui.use(['table', 'layer', 'form', 'dropdown'], function(){
   }
   
   const inviteTemplates = [
-    "¡Hola! 👋\n\nIngresa aquí para activar tu cuenta:\n{link}\n\nTu código es: *{code}*",
-    "¡Bienvenido!\n\nTú código es: *{code}*\nRegistrate en este enlace:\n{link}",
-    "¡Hola! Estamos sumando fuerzas.\n\nTu código es: *{code}*\nRegistrate en este link:\n{link}"
+  "¡Hola! 👋\n\nIngresa aquí para activar tu cuenta en la plataforma:\n{link}\n\nTu código es: *{code}*",
+  "¡Bienvenido!\n\nTu código es: *{code}*\nRegístrate en la plataforma:\n{link}",
+  "¡Hola! Estamos sumando fuerzas.\n\nTu código es: *{code}*\nRegístrate en la plataforma:\n{link}"
 ];
 
 function sendInviteWhatsApp(userData) {
